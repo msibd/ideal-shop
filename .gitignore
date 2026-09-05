@@ -1,0 +1,38 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+**/bin/
+**/obj/
+
+# Test results
+TestResults/
+*.trx
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# ASP.NET Core local settings
+appsettings.Development.json
+
+# User secrets
+secrets.json
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp

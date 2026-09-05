@@ -1,0 +1,106 @@
+@model Optical.Application.Features.Inventory.InventoryListResult
+@{
+    ViewData["Title"] = "Inventory";
+    var search = ViewData["Search"] as string;
+    var lowStockOnly = ViewData["LowStockOnly"] is true;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Inventory</h1>
+        <p class="app-brand-subtitle">@Model.LowStockCount product(s) at or below reorder level</p>
+    </div>
+    <a class="btn btn-light border" asp-controller="Purchases" asp-action="Create">Record purchase</a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1 align-items-center" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:340px" name="search" value="@search"
+                   placeholder="Search by name or SKU" />
+            <div class="form-check ms-2">
+                <input class="form-check-input" type="checkbox" name="lowStockOnly" value="true"
+                       id="lowStockOnly" checked="@lowStockOnly" />
+                <label class="form-check-label" for="lowStockOnly">Low stock only</label>
+            </div>
+            <button class="btn btn-primary" type="submit">Apply</button>
+            @if (!string.IsNullOrWhiteSpace(search) || lowStockOnly)
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No products found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Product</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Brand</th>
+                        <th scope="col" class="text-end">In stock</th>
+                        <th scope="col" class="text-end">Reorder</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr class="row-category">
+                            <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@item.Sku</td>
+                            <td class="cell-primary">@item.Name</td>
+                            <td><span class="chip chip-category">@item.CategoryName.ToUpperInvariant()</span></td>
+                            <td><span class="chip chip-brand">@item.BrandName.ToUpperInvariant()</span></td>
+                            <td class="text-end money fw-semibold">@item.Quantity</td>
+                            <td class="text-end money">@item.ReorderLevel</td>
+                            <td>
+                                @if (!item.IsActive)
+                                {
+                                    <span class="chip chip-inactive">INACTIVE</span>
+                                }
+                                else if (item.IsLowStock)
+                                {
+                                    <span class="chip chip-inactive">LOW STOCK</span>
+                                }
+                                else
+                                {
+                                    <span class="chip chip-active">OK</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Adjust" asp-route-id="@item.ProductId">Adjust</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount product(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-lowStockOnly="@lowStockOnly" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-lowStockOnly="@lowStockOnly" asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

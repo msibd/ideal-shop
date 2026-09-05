@@ -1,0 +1,117 @@
+@using Optical.Domain.Enums
+@model Optical.Application.Features.Sales.SaleListResult
+@{
+    ViewData["Title"] = "Sales";
+    var search = ViewData["Search"] as string;
+    var from = ViewData["From"] as DateOnly?;
+    var to = ViewData["To"] as DateOnly?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Sales</h1>
+        <p class="app-brand-subtitle">@Model.TotalCount sale(s) — @Model.TotalAmount.ToString("N2") total</p>
+    </div>
+    <a class="action-btn action-solid-1 w-auto" asp-controller="Pos" asp-action="Index">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="12" rx="2" />
+            <line x1="2" y1="9" x2="22" y2="9" />
+            <line x1="7" y1="20" x2="17" y2="20" />
+        </svg>
+        New Sale
+    </a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1 flex-wrap align-items-center" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:280px" name="search" value="@search"
+                   placeholder="Search by invoice or customer" />
+            <input class="form-control" style="max-width:170px" type="date" name="from"
+                   value="@(from?.ToString("yyyy-MM-dd"))" aria-label="From date" />
+            <input class="form-control" style="max-width:170px" type="date" name="to"
+                   value="@(to?.ToString("yyyy-MM-dd"))" aria-label="To date" />
+            <button class="btn btn-primary" type="submit">Filter</button>
+            @if (!string.IsNullOrWhiteSpace(search) || from is not null || to is not null)
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No sales found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Invoice</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Payment</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Lines</th>
+                        <th scope="col" class="text-end">Units</th>
+                        <th scope="col" class="text-end">Total</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sale in Model.Items)
+                    {
+                        <tr class="row-brand">
+                            <td class="cell-primary" style="font-variant-numeric: tabular-nums">@sale.InvoiceNumber</td>
+                            <td class="cell-secondary">@sale.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td>
+                                @if (sale.CustomerName is null)
+                                {
+                                    <span class="cell-secondary">Walk-in</span>
+                                }
+                                else
+                                {
+                                    <span class="chip chip-brand">@sale.CustomerName.ToUpperInvariant()</span>
+                                }
+                            </td>
+                            <td class="cell-secondary">@(sale.PaymentMethod is null ? "—" : sale.PaymentMethod == PaymentMethod.MobileBanking ? "Mobile Banking" : sale.PaymentMethod.ToString())</td>
+                            <td>
+                                <span class="badge @(sale.Status == SaleStatus.Completed ? "text-bg-success" : "text-bg-secondary")">@sale.Status</span>
+                            </td>
+                            <td class="text-end money">@sale.LineCount</td>
+                            <td class="text-end money">@sale.TotalQuantity</td>
+                            <td class="text-end money fw-semibold">@sale.TotalAmount.ToString("N2")</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@sale.Id">Details</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-action="Receipt" asp-route-id="@sale.Id" target="_blank">Receipt</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount sale(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-from="@(from?.ToString("yyyy-MM-dd"))" asp-route-to="@(to?.ToString("yyyy-MM-dd"))"
+                           asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-from="@(from?.ToString("yyyy-MM-dd"))" asp-route-to="@(to?.ToString("yyyy-MM-dd"))"
+                           asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

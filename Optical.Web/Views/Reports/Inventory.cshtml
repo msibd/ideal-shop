@@ -1,0 +1,129 @@
+@model Optical.Application.Features.Reports.InventoryReportResult
+@{
+    ViewData["Title"] = "Inventory Report";
+    var lowStockOnly = ViewData["LowStockOnly"] is true;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Inventory Report</h1>
+        <p class="app-brand-subtitle">Stock as it stands right now</p>
+    </div>
+    <a class="btn btn-light border" asp-action="Sales">Sales report</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="app-card p-4">
+            <p class="stat-label">Units in stock</p>
+            <p class="stat-value mb-0">@Model.TotalUnits</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="app-card p-4">
+            <p class="stat-label">Stock value (at cost)</p>
+            <p class="stat-value mb-0">@Model.TotalStockValue.ToString("N2")</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="app-card p-4">
+            <p class="stat-label">Low stock</p>
+            <p class="stat-value mb-0">@Model.LowStockCount</p>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="app-card p-4">
+            <p class="stat-label">Out of stock</p>
+            <p class="stat-value mb-0">@Model.OutOfStockCount</p>
+        </div>
+    </div>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <span class="app-card-title">@(lowStockOnly ? "Low-stock products" : "All products")</span>
+        @if (lowStockOnly)
+        {
+            <a class="btn btn-sm btn-outline-primary" asp-action="Inventory">Show all</a>
+        }
+        else
+        {
+            <a class="btn btn-sm btn-outline-primary" asp-action="Inventory" asp-route-lowStockOnly="true">Low stock only</a>
+        }
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No products found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Product</th>
+                        <th scope="col">Category</th>
+                        <th scope="col" class="text-end">In stock</th>
+                        <th scope="col" class="text-end">Reorder level</th>
+                        <th scope="col" class="text-end">Stock value</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr class="row-category">
+                            <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@row.Sku</td>
+                            <td class="cell-primary">
+                                @row.Name
+                                @if (!row.IsActive)
+                                {
+                                    <span class="badge text-bg-secondary ms-1">Inactive</span>
+                                }
+                            </td>
+                            <td class="cell-secondary">@row.CategoryName</td>
+                            <td class="text-end money">@row.Quantity</td>
+                            <td class="text-end money">@row.ReorderLevel</td>
+                            <td class="text-end money">@row.StockValue.ToString("N2")</td>
+                            <td>
+                                @if (row.IsOutOfStock)
+                                {
+                                    <span class="badge text-bg-danger">Out of stock</span>
+                                }
+                                else if (row.IsLowStock)
+                                {
+                                    <span class="badge text-bg-warning">Low stock</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-success">OK</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount product(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Inventory"
+                           asp-route-lowStockOnly="@lowStockOnly" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Inventory"
+                           asp-route-lowStockOnly="@lowStockOnly" asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,1248 @@
+/* ------------------------------------------------------------------
+   Optical Shop design tokens
+
+   Categorical hues carry ENTITY IDENTITY (Category = blue, Brand = orange)
+   and are fixed, never cycled. Validated against the white card surface:
+   CVD dE 24.7 (protan), normal-vision dE 33.6, both slots >= 3:1 contrast.
+
+   Status hues (good / warning) are reserved for state and never reused as
+   an entity colour. Every coloured chip also carries a shape + text label,
+   so meaning never rests on hue alone.
+
+   Numbers and labels wear ink tokens, never an entity colour.
+   ------------------------------------------------------------------ */
+
+:root {
+    /* surfaces */
+    --page: #f7f8fa;
+    --surface: #ffffff;
+    --border: #e6e8ec;
+    --hairline: #f0f2f5;
+
+    /* ink */
+    --ink: #0b0b0b;
+    --ink-secondary: #52514e;
+    --ink-muted: #898781;
+
+    /* categorical - entity identity */
+    --cat-1: #2a78d6;
+    --cat-1-wash: #e4eefb;
+    --cat-1-ink: #1c5cab;
+    --cat-2: #eb6834;
+    --cat-2-wash: #fdeee6;
+    --cat-2-ink: #a8420f;
+
+    /* status - reserved */
+    --status-good: #0ca30c;
+    --status-good-wash: #e4f4e6;
+    --status-good-ink: #006300;
+    --status-warning: #fab219;
+    --status-warning-wash: #fdf1d9;
+    --status-warning-ink: #7a5200;
+    --status-off-wash: #eef0f3;
+    --status-off-ink: #52514e;
+    --status-critical: #d03b3b;
+    --status-critical-wash: #fbe8e8;
+    --status-critical-ink: #a52121;
+
+    /* chart slots - POSITIONAL, not entity identity.
+       Assigned by a stable ordering, never by rank, so a value change never
+       repaints a slice. Slots 1-2 share hexes with the categorical tokens
+       because both come from the same validated palette order.
+       Validated all-pairs on the white card surface (#ffffff):
+       worst CVD dE 9.2 (deutan), worst normal-vision dE 16.3, both above the
+       gates. A fifth hue fails, so the tail folds into --chart-other.
+       Every slice also carries a name + value + share in the legend, so
+       meaning never rests on hue alone. */
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
+    --chart-3: #1baf7a;
+    --chart-4: #4a3aa7;
+    --chart-other: #898781;
+
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(11, 11, 11, .04), 0 1px 3px rgba(11, 11, 11, .06);
+}
+
+body {
+    background-color: var(--page);
+    color: var(--ink);
+    font-size: 14px;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ---------- App bar ---------- */
+
+.app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.app-brand-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--cat-1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.app-brand-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+    color: var(--ink);
+}
+
+.app-brand-subtitle {
+    font-size: .78rem;
+    color: var(--ink-secondary);
+    margin: 0;
+}
+
+.app-user-name {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--ink);
+}
+
+.app-user-role {
+    font-size: .78rem;
+    color: var(--ink-secondary);
+}
+
+.app-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---------- Nav tabs ---------- */
+
+.app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem;
+}
+
+.app-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .85rem .95rem;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+}
+
+.app-nav-link:hover {
+    color: var(--cat-1-ink);
+}
+
+.app-nav-link.active {
+    color: var(--cat-1-ink);
+    border-bottom-color: var(--cat-1);
+}
+
+/* A group toggle is a button, so it has to be talked back into looking like a tab. */
+.app-nav-toggle {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.app-nav-caret {
+    opacity: .6;
+    transition: transform .15s ease;
+}
+
+.app-nav-toggle[aria-expanded="true"] {
+    color: var(--cat-1-ink);
+}
+
+.app-nav-toggle[aria-expanded="true"] .app-nav-caret {
+    transform: rotate(180deg);
+}
+
+/* Settings sits apart from the places you actually work. */
+.app-nav-icon {
+    margin-left: auto;
+}
+
+.app-nav .dropdown-menu {
+    border-color: var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: .35rem;
+}
+
+.app-nav .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem .7rem;
+    border-radius: calc(var(--radius) - 4px);
+    font-weight: 600;
+    color: var(--ink-secondary);
+}
+
+.app-nav .dropdown-item:hover,
+.app-nav .dropdown-item:focus-visible {
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+}
+
+.app-nav .dropdown-item.active {
+    background: var(--cat-1);
+    color: #fff;
+}
+
+/* ---------- Cards ---------- */
+
+.app-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.app-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.app-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--ink);
+}
+
+/* ---------- Stat tiles ----------
+   label -> value -> hint. The value is always ink: colour lives in the
+   icon tile, so a number never depends on hue to be read. */
+
+.stat-label {
+    font-size: .875rem;
+    color: var(--ink-secondary);
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 2.25rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--ink);
+}
+
+.stat-value.sm {
+    font-size: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.stat-value.status-ok {
+    color: var(--status-good-ink);
+}
+
+.stat-hint {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.stat-icon.cat-1 {
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+}
+
+.stat-icon.cat-2 {
+    background: var(--cat-2-wash);
+    color: var(--cat-2-ink);
+}
+
+.stat-icon.warning {
+    background: var(--status-warning-wash);
+    color: var(--status-warning-ink);
+}
+
+.stat-icon.good {
+    background: var(--status-good-wash);
+    color: var(--status-good-ink);
+}
+
+.is-loading {
+    opacity: .55;
+    transition: opacity .15s ease-in-out;
+}
+
+.stat-icon.critical {
+    background: var(--status-critical-wash);
+    color: var(--status-critical-ink);
+}
+
+/* ---------- Tables ---------- */
+
+.app-table {
+    margin: 0;
+}
+
+.app-table > thead > tr > th {
+    font-size: .72rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-secondary);
+    font-weight: 600;
+    background: #fbfcfd;
+    border-bottom: 1px solid var(--border);
+    padding: .75rem 1.25rem;
+}
+
+.app-table > tbody > tr > td {
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: middle;
+    background: transparent;
+}
+
+.app-table > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+.app-table > tbody > tr:hover > td {
+    background: #fafbfc;
+}
+
+/* Row accent: a 3px bar in the entity's own hue, so identity is visible
+   at the row level and not only inside the Type chip. */
+.app-table > tbody > tr > td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--row-accent, transparent);
+}
+
+.row-category {
+    --row-accent: var(--cat-1);
+}
+
+.row-brand {
+    --row-accent: var(--cat-2);
+}
+
+.cell-primary {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.cell-secondary {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+}
+
+.meta-line {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    color: var(--ink-secondary);
+    font-size: .8rem;
+}
+
+.meta-line.strong {
+    color: var(--ink);
+    font-size: .875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.meta-line svg {
+    color: var(--ink-muted);
+    flex: 0 0 auto;
+}
+
+/* ---------- Chips ----------
+   Every chip = dot (shape) + wash + text label. The 1px border keeps the
+   boundary visible in grayscale print and forced-colors mode. */
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.chip::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 auto;
+}
+
+.chip-category {
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    border-color: rgba(42, 120, 214, .28);
+}
+
+.chip-brand {
+    background: var(--cat-2-wash);
+    color: var(--cat-2-ink);
+    border-color: rgba(235, 104, 52, .3);
+}
+
+.chip-active {
+    background: var(--status-good-wash);
+    color: var(--status-good-ink);
+    border-color: rgba(12, 163, 12, .3);
+}
+
+.chip-inactive {
+    background: var(--status-off-wash);
+    color: var(--status-off-ink);
+    border-color: rgba(82, 81, 78, .25);
+}
+
+/* Inactive uses a hollow dot so state is distinguishable without colour. */
+.chip-inactive::before {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px currentColor;
+}
+
+/* ---------- Actions ---------- */
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    width: 100%;
+    padding: .75rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.action-solid-1 {
+    background: var(--cat-1);
+    color: #fff;
+}
+
+.action-solid-2 {
+    background: var(--cat-2-ink);
+    color: #fff;
+}
+
+.action-solid-1:hover, .action-solid-2:hover {
+    color: #fff;
+    filter: brightness(.93);
+}
+
+.action-ghost-1 {
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    border-color: rgba(42, 120, 214, .28);
+}
+
+.action-ghost-2 {
+    background: var(--cat-2-wash);
+    color: var(--cat-2-ink);
+    border-color: rgba(235, 104, 52, .3);
+}
+
+.action-ghost-1:hover {
+    color: var(--cat-1-ink);
+    filter: brightness(.97);
+}
+
+.action-ghost-2:hover {
+    color: var(--cat-2-ink);
+    filter: brightness(.97);
+}
+
+.action-btn.w-auto {
+    width: auto;
+}
+
+/* ---------- Forms & buttons ---------- */
+
+.btn-primary {
+    --bs-btn-bg: var(--cat-1);
+    --bs-btn-border-color: var(--cat-1);
+    --bs-btn-hover-bg: var(--cat-1-ink);
+    --bs-btn-hover-border-color: var(--cat-1-ink);
+    --bs-btn-active-bg: var(--cat-1-ink);
+    --bs-btn-active-border-color: var(--cat-1-ink);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--cat-1-ink);
+    --bs-btn-border-color: rgba(42, 120, 214, .45);
+    --bs-btn-hover-bg: var(--cat-1);
+    --bs-btn-hover-border-color: var(--cat-1);
+}
+
+
+/* ---------- Bootstrap components mapped onto the tokens ----------
+
+   Bootstrap ships its own palette. Every component the app actually uses is
+   pinned to a token here, so no screen can introduce a hue the system has not
+   validated. Destructive and confirming states wear the reserved status hues;
+   neutral controls wear ink and border tokens, never a categorical hue.
+
+   Text utilities resolve to the -ink variants: the base status hues are tuned
+   for fills, and #d03b3b on white does not clear 4.5:1 for body text.
+   ------------------------------------------------------------------ */
+
+:root {
+    --bs-primary-rgb: 28, 92, 171;      /* --cat-1-ink */
+    --bs-danger-rgb: 165, 33, 33;       /* --status-critical-ink */
+    --bs-success-rgb: 0, 99, 0;         /* --status-good-ink */
+    --bs-warning-rgb: 122, 82, 0;       /* --status-warning-ink */
+    --bs-secondary-rgb: 82, 81, 78;     /* --ink-secondary */
+}
+
+/* Destructive: removing a line, an out-of-stock badge, a rejected sale. */
+.btn-outline-danger {
+    --bs-btn-color: var(--status-critical-ink);
+    --bs-btn-border-color: rgba(208, 59, 59, .4);
+    --bs-btn-hover-bg: var(--status-critical);
+    --bs-btn-hover-border-color: var(--status-critical);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--status-critical-ink);
+    --bs-btn-active-border-color: var(--status-critical-ink);
+}
+
+/* Neutral: cancel, change, dismiss. Ink and border tokens only. */
+.btn-outline-secondary {
+    --bs-btn-color: var(--ink-secondary);
+    --bs-btn-border-color: var(--border);
+    --bs-btn-hover-bg: var(--hairline);
+    --bs-btn-hover-border-color: var(--border);
+    --bs-btn-hover-color: var(--ink);
+    --bs-btn-active-bg: var(--hairline);
+    --bs-btn-active-border-color: var(--border);
+    --bs-btn-active-color: var(--ink);
+}
+
+.btn-light {
+    --bs-btn-bg: var(--surface);
+    --bs-btn-color: var(--ink-secondary);
+    --bs-btn-border-color: var(--border);
+    --bs-btn-hover-bg: var(--hairline);
+    --bs-btn-hover-color: var(--ink);
+    --bs-btn-hover-border-color: var(--border);
+}
+
+.btn-link {
+    --bs-btn-color: var(--cat-1-ink);
+    --bs-btn-hover-color: var(--cat-1);
+    --bs-btn-active-color: var(--cat-1-ink);
+    --bs-btn-disabled-color: var(--ink-muted);
+}
+
+/* Selects were missing the focus ring that inputs already had. */
+.form-select:focus {
+    border-color: #9ec1fb;
+    box-shadow: 0 0 0 .2rem rgba(42, 120, 214, .18);
+}
+
+.form-control, .form-select {
+    border-color: var(--border);
+    color: var(--ink);
+}
+
+.form-control::placeholder {
+    color: var(--ink-muted);
+    opacity: 1;
+}
+
+.form-label {
+    color: var(--ink-secondary);
+}
+
+/* Alerts carry a wash background with its matching ink, the same pairing the
+   chips and stat icons use, so a message reads as the same state everywhere. */
+.alert-success {
+    background-color: var(--status-good-wash);
+    border-color: rgba(12, 163, 12, .25);
+    color: var(--status-good-ink);
+}
+
+.alert-danger {
+    background-color: var(--status-critical-wash);
+    border-color: rgba(208, 59, 59, .25);
+    color: var(--status-critical-ink);
+}
+
+.alert-warning {
+    background-color: var(--status-warning-wash);
+    border-color: rgba(250, 178, 25, .35);
+    color: var(--status-warning-ink);
+}
+
+/* The two remaining Bootstrap colour utilities the views use. */
+.text-muted {
+    color: var(--ink-muted) !important;
+}
+
+.bg-light {
+    background-color: var(--hairline) !important;
+}
+
+/* Result lists: the POS product and customer pickers. */
+.list-group-item {
+    background: var(--surface);
+    border-color: var(--hairline);
+    color: var(--ink);
+}
+
+.list-group-item-action:hover,
+.list-group-item-action:focus {
+    background: var(--cat-1-wash);
+    color: var(--ink);
+}
+
+.list-group-item.disabled,
+.list-group-item:disabled,
+.list-group-item-action:disabled {
+    background: var(--surface);
+    color: var(--ink-muted);
+}
+
+.form-control:focus, .form-check-input:focus {
+    border-color: #9ec1fb;
+    box-shadow: 0 0 0 .2rem rgba(42, 120, 214, .18);
+}
+
+.form-check-input:checked {
+    background-color: var(--cat-1);
+    border-color: var(--cat-1);
+}
+
+a:focus-visible, button:focus-visible, .app-nav-link:focus-visible, .action-btn:focus-visible {
+    outline: 2px solid var(--cat-1);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ---------- Backup channel: no colour available ---------- */
+
+@media (forced-colors: active) {
+    .chip {
+        border: 1px solid CanvasText;
+        forced-color-adjust: none;
+        background: Canvas;
+        color: CanvasText;
+    }
+
+    .app-table > tbody > tr > td:first-child {
+        box-shadow: none;
+    }
+}
+
+@media print {
+    .chip {
+        border: 1px solid #333;
+        background: transparent !important;
+        color: #000 !important;
+    }
+}
+
+.app-brand-text {
+    min-width: 0;
+}
+
+.app-brand-text .app-brand-subtitle {
+    max-width: 32ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Money and counts align on the decimal point down a column. */
+.money {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Password show/hide ---------- */
+
+.password-toggle {
+    border: 1px solid var(--border);
+    border-left: 0;
+    background: var(--surface);
+    color: var(--ink-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .7rem;
+}
+
+.password-toggle:hover {
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid var(--cat-1);
+    outline-offset: -2px;
+    z-index: 3;
+}
+
+/* The input keeps the focus ring; the button must not paint over it. */
+.input-group:focus-within .password-toggle {
+    border-color: #9ec1fb;
+}
+
+/* ---------- Page-level tab strip (Profile Management) ---------- */
+
+.tab-strip {
+    display: inline-flex;
+    gap: .25rem;
+    padding: .25rem;
+    background: var(--status-off-wash);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.tab-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .9rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: .875rem;
+    color: var(--ink-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tab-link:hover {
+    color: var(--cat-1-ink);
+}
+
+.tab-link.active {
+    background: var(--surface);
+    color: var(--cat-1-ink);
+    box-shadow: 0 1px 2px rgba(11, 11, 11, .08);
+}
+
+.tab-link:focus-visible {
+    outline: 2px solid var(--cat-1);
+    outline-offset: 1px;
+}
+
+
+/* ---------- Dashboard ----------
+   Stat tiles, two donuts and two lists. Charts are inline SVG on purpose:
+   a charting library would be a dependency for two shapes we can draw. */
+
+.stat-icon.cat-3 {
+    background: #e3f6ee;
+    color: #0b6f4d;
+}
+
+.stat-icon.cat-4 {
+    background: #e8e6f6;
+    color: #3a2d85;
+}
+
+.stat-icon.critical {
+    background: var(--status-critical-wash);
+    color: var(--status-critical-ink);
+}
+
+.stat-value.money {
+    font-size: 1.9rem;
+}
+
+.stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+.stat-trend.up {
+    color: var(--status-good-ink);
+}
+
+.stat-trend.down {
+    color: var(--status-critical-ink);
+}
+
+/* Donut: one ring, segments separated by a 2px surface gap. */
+
+.donut-figure {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .5rem 0 1rem;
+}
+
+.donut-track {
+    fill: none;
+    stroke: var(--hairline);
+}
+
+.donut-segment {
+    fill: none;
+    stroke-linecap: butt;
+}
+
+.donut-center-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    fill: var(--ink);
+}
+
+.donut-center-label {
+    font-size: .72rem;
+    fill: var(--ink-secondary);
+}
+
+/* Legend: swatch + icon + name carry identity together. */
+
+.chart-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0 1.25rem 1.25rem;
+    display: grid;
+    gap: .7rem;
+}
+
+.chart-legend li {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: .85rem;
+}
+
+.legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+}
+
+.legend-name {
+    color: var(--ink-secondary);
+    font-weight: 500;
+}
+
+.legend-value {
+    margin-left: auto;
+    color: var(--ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.legend-share {
+    color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Activity feed */
+
+.activity-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.activity-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .85rem 1.25rem;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.activity-list li:last-child {
+    border-bottom: 0;
+}
+
+/* Repeats the units figure next to it as length; never the only way to read the value. */
+.rank-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--cat-1-wash);
+    overflow: hidden;
+}
+
+.rank-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--cat-1);
+}
+
+.activity-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+}
+
+.activity-detail {
+    font-size: .8rem;
+    color: var(--ink-secondary);
+}
+
+.activity-time {
+    margin-left: auto;
+    font-size: .78rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+
+/* Banner under the stock donut */
+
+.stock-note {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 1.25rem 1.25rem;
+    padding: .7rem .9rem;
+    border-radius: 10px;
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    font-size: .82rem;
+}
+
+/* Page footer */
+
+.app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--ink-muted);
+    font-size: .8rem;
+}
+
+
+/* ---------- Dense stat tiles ----------
+   Scoped to .stat-tile so the roomier .stat-value used on the Product,
+   Purchase and Adjust detail pages is left alone. Five tiles have to sit
+   on one row from xl up, so the type and the icon step down together. */
+
+.stat-tile {
+    padding: 1rem;
+}
+
+.stat-tile .stat-label {
+    font-size: .8rem;
+}
+
+.stat-tile .stat-value {
+    font-size: 1.75rem;
+}
+
+.stat-tile .stat-value.money {
+    font-size: 1.45rem;
+}
+
+.stat-tile .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+}
+
+.stat-tile .stat-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.stat-tile .stat-hint {
+    font-size: .75rem;
+}
+
+/* ---------- Collapsible card sections ----------
+   Bootstrap's collapse drives the animation; the chevron just reflects
+   aria-expanded, so the button state and the visual state cannot drift. */
+
+.card-collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .3rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-secondary);
+    line-height: 0;
+}
+
+.card-collapse:hover {
+    background: var(--status-off-wash);
+    color: var(--ink);
+}
+
+.card-collapse:focus-visible {
+    outline: 2px solid var(--cat-1);
+    outline-offset: 1px;
+}
+
+.card-collapse svg {
+    transition: transform .15s ease;
+}
+
+.card-collapse[aria-expanded="false"] svg {
+    transform: rotate(-90deg);
+}
+
+/* A collapsed card must not keep the height of its expanded neighbour.
+   h-100 is a Bootstrap utility, so overriding it needs !important. */
+.app-card:has(> .collapse:not(.show)) {
+    height: auto !important;
+}
+
+.app-card:has(> .collapse:not(.show)) .app-card-header {
+    border-bottom: 0;
+}
+
+/* ---------- Point of Sale ----------
+   Built from the same tokens as the rest of the app: no hue appears here that
+   is not already in the palette. The till is dense by design, so the list rows
+   and cart rows are tighter than the standard table spacing.
+   ------------------------------------------------------------------ */
+
+/* A field with an icon sitting inside its left edge. */
+.pos-field {
+    position: relative;
+}
+
+.pos-field > svg {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    pointer-events: none;
+}
+
+.pos-field > .form-control,
+.pos-field > .form-select {
+    padding-left: 2.4rem;
+}
+
+/* Product results: a fixed-height scroller so the cart never gets pushed away. */
+.pos-list {
+    max-height: 22rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.pos-list-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem .75rem;
+    border-bottom: 1px solid var(--hairline);
+}
+
+.pos-list-row:last-child {
+    border-bottom: 0;
+}
+
+.pos-list-row:hover {
+    background: var(--hairline);
+}
+
+/* Products carry no image in the MVP, so the slot holds a neutral glyph. */
+.pos-thumb {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    color: var(--ink-muted);
+}
+
+.pos-thumb.sm {
+    width: 38px;
+    height: 38px;
+}
+
+.pos-stock {
+    font-size: .8rem;
+    color: var(--status-good-ink);
+}
+
+.pos-stock.is-out {
+    color: var(--status-critical-ink);
+}
+
+.pos-add {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    border: 1px solid rgba(42, 120, 214, .3);
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.pos-add:hover:not(:disabled) {
+    background: var(--cat-1);
+    color: #fff;
+}
+
+.pos-add:disabled {
+    background: var(--status-off-wash);
+    border-color: var(--border);
+    color: var(--ink-muted);
+}
+
+/* A tip strip, not a warning: washed primary rather than a status hue. */
+.pos-hint {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .75rem 1rem;
+    border-radius: var(--radius);
+    background: var(--cat-1-wash);
+    color: var(--cat-1-ink);
+    font-size: .85rem;
+}
+
+/* Quantity stepper in the cart. */
+.qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.qty-stepper button {
+    width: 30px;
+    height: 32px;
+    border: 0;
+    background: transparent;
+    color: var(--cat-1-ink);
+    line-height: 1;
+}
+
+.qty-stepper button:hover:not(:disabled) {
+    background: var(--cat-1-wash);
+}
+
+.qty-stepper button:disabled {
+    color: var(--ink-muted);
+}
+
+.qty-stepper input {
+    width: 44px;
+    height: 32px;
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+
+.qty-stepper input:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(42, 120, 214, .18);
+}
+
+/* Spinners would fight the stepper buttons. */
+.qty-stepper input::-webkit-outer-spin-button,
+.qty-stepper input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.qty-stepper input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Remove a cart line: icon only, destructive. */
+.line-remove {
+    border: 0;
+    background: transparent;
+    color: var(--status-critical-ink);
+    padding: .25rem;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.line-remove:hover {
+    background: var(--status-critical-wash);
+}
+
+.pos-total {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-invoice-number {
+    color: var(--cat-1-ink);
+    font-weight: 600;
+}

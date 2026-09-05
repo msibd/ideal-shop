@@ -1,0 +1,125 @@
+@using Optical.Domain.Enums
+@using Optical.Web.ViewModels
+@model Optical.Application.Features.Exchanges.ExchangeListResult
+@{
+    ViewData["Title"] = "Exchanges";
+    var search = ViewData["Search"] as string;
+    var from = ViewData["From"] as DateOnly?;
+    var to = ViewData["To"] as DateOnly?;
+
+    string MethodName(PaymentMethod method) =>
+        method == PaymentMethod.MobileBanking ? "Mobile Banking" : method.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Exchanges</h1>
+        <p class="app-brand-subtitle">
+            @Model.TotalCount exchange(s) — @Model.ReturnedAmount.ToString("N2") swapped back,
+            @Model.AmountPaid.ToString("N2") collected in adjustments
+        </p>
+    </div>
+    <a class="btn btn-light border" asp-controller="Sales" asp-action="Index">Find a sale to exchange</a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1 flex-wrap align-items-center" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:280px" name="search" value="@search"
+                   placeholder="Search by exchange, invoice or customer" />
+            <input class="form-control" style="max-width:170px" type="date" name="from"
+                   value="@(from?.ToString("yyyy-MM-dd"))" aria-label="From date" />
+            <input class="form-control" style="max-width:170px" type="date" name="to"
+                   value="@(to?.ToString("yyyy-MM-dd"))" aria-label="To date" />
+            <button class="btn btn-primary" type="submit">Filter</button>
+            @if (!string.IsNullOrWhiteSpace(search) || from is not null || to is not null)
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No exchanges found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Exchange</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Against sale</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col" class="text-end">Units back</th>
+                        <th scope="col" class="text-end">Units out</th>
+                        <th scope="col" class="text-end">Value back</th>
+                        <th scope="col" class="text-end">Value out</th>
+                        <th scope="col" class="text-end">Adjustment</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr class="row-brand">
+                            <td class="cell-primary" style="font-variant-numeric: tabular-nums">@item.ExchangeNumber</td>
+                            <td class="cell-secondary">@item.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td>
+                                <a class="text-decoration-none" asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleId">
+                                    @item.InvoiceNumber
+                                </a>
+                            </td>
+                            <td class="cell-secondary">@(item.CustomerName ?? "Walk-in")</td>
+                            <td>
+                                <span class="chip chip-category">@ExchangeReasons.Name(item.Reason).ToUpperInvariant()</span>
+                            </td>
+                            <td class="text-end money">@item.ReturnedUnits</td>
+                            <td class="text-end money">@item.ReplacementUnits</td>
+                            <td class="text-end money">@item.ReturnedAmount.ToString("N2")</td>
+                            <td class="text-end money">@item.ReplacementAmount.ToString("N2")</td>
+                            <td class="text-end money fw-semibold">
+                                @if (item.AmountPaid > 0)
+                                {
+                                    @item.AmountPaid.ToString("N2")
+                                    <div class="cell-secondary">@(item.PaymentMethod is null ? "" : MethodName(item.PaymentMethod.Value))</div>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-secondary">Even swap</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.Id">Details</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount exchange(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-from="@(from?.ToString("yyyy-MM-dd"))" asp-route-to="@(to?.ToString("yyyy-MM-dd"))"
+                           asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Index" asp-route-search="@search"
+                           asp-route-from="@(from?.ToString("yyyy-MM-dd"))" asp-route-to="@(to?.ToString("yyyy-MM-dd"))"
+                           asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

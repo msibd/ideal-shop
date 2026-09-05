@@ -1,0 +1,23 @@
+@model Optical.Web.ViewModels.StatTrendViewModel
+@{
+    var metric = Model.Metric;
+
+    // Percent needs a non-zero baseline; a headcount only needs a change to report.
+    var hasTrend = Model.AsPercent ? metric.ChangePercent is not null : metric.Change != 0;
+    var rising = Model.AsPercent ? metric.ChangePercent >= 0 : metric.Change > 0;
+
+    var text = Model.AsPercent
+        ? $"{Math.Abs(metric.ChangePercent ?? 0m).ToString("0.#")}%"
+        : Math.Abs(metric.Change).ToString("N0");
+}
+
+@if (hasTrend)
+{
+    <span class="stat-trend @(rising ? "up" : "down")">
+        @(rising ? "▲" : "▼") @text @Model.ComparisonLabel
+    </span>
+}
+else
+{
+    <span>@Model.NoComparisonHint</span>
+}

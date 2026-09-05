@@ -1,0 +1,76 @@
+@model Optical.Application.Features.Customers.CustomerDetails
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="app-brand-title">@Model.Name</h1>
+        <p class="app-brand-subtitle">@Model.Phone</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="Index">Back to list</a>
+        <a class="action-btn action-solid-1 w-auto" asp-action="Edit" asp-route-id="@Model.Id">Edit</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Customer details</h2>
+                <span class="chip @(Model.IsActive ? "chip-active" : "chip-inactive")">
+                    @(Model.IsActive ? "ACTIVE" : "INACTIVE")
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table app-table">
+                    <tbody>
+                        <tr>
+                            <td class="cell-secondary" style="width:40%">Name</td>
+                            <td class="cell-primary">@Model.Name</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Phone</td>
+                            <td class="cell-primary">@Model.Phone</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Email</td>
+                            <td class="cell-primary">@(Model.Email ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Address</td>
+                            <td class="cell-primary">@(Model.Address ?? "—")</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Notes</td>
+                            <td class="cell-primary">@(Model.Notes ?? "—")</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Record</h2>
+            </div>
+            <div class="p-3">
+                <div class="meta-line strong mb-1">
+                    Created @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </div>
+                <div class="meta-line">
+                    @(Model.UpdatedAt is null
+                        ? "Never updated"
+                        : $"Updated {Model.UpdatedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}")
+                </div>
+                <p class="stat-hint mt-3 mb-0 d-flex align-items-start gap-2">
+                    <span class="d-inline-flex pt-1"><partial name="_InfoIcon" /></span>
+                    <span>Purchase history appears once POS sales are recorded.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

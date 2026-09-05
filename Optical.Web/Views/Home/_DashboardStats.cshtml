@@ -1,0 +1,335 @@
+@model Optical.Application.Features.Dashboard.DashboardSummary
+@using Optical.Web.ViewModels
+@using Optical.Application.Features.Dashboard
+@using Optical.Domain.Enums
+@{
+    string Money(decimal amount) => "৳" + amount.ToString("N0");
+
+    string Share(decimal part, decimal whole) =>
+        whole == 0 ? "0%" : (part / whole * 100m).ToString("0.#") + "%";
+
+    string MethodName(PaymentMethod method) =>
+        method == PaymentMethod.MobileBanking ? "Mobile Banking" : method.ToString();
+
+    var comparison = Model.Range.ComparisonLabel;
+
+    // "Today's Sales" only reads correctly when the period actually is today.
+    var salesTitle = Model.Range.Kind == DashboardRangeKind.Today ? "Today's Sales" : "Sales This Period";
+
+    var methodSlots = new[] { "--chart-1", "--chart-2", "--chart-3" };
+
+    var methodDonut = new DonutViewModel
+    {
+        CenterValue = Money(Model.Sales.Current),
+        CenterLabel = Model.Orders.Current == 1 ? "1 sale" : $"{Model.Orders.Current:N0} sales",
+        Description = "Takings for the period, split by how each sale was settled.",
+        EmptyMessage = "No sales in this period yet.",
+        Slices = Model.SalesByMethod
+            .Select((m, index) => new DonutSlice(
+                MethodName(m.Method),
+                m.Amount,
+                $"{Money(m.Amount)} ({Share(m.Amount, Model.Sales.Current)})",
+                methodSlots[Math.Min(index, methodSlots.Length - 1)]))
+            .ToList()
+    };
+}
+
+@* Swapped in wholesale when the period filter changes; the label rides along so the
+   heading can follow without a second request. *@
+<div id="dashboard-stats" data-range-label="@Model.Range.Label" data-range-kind="@Model.Range.Kind">
+    <div class="row g-3 mb-3 row-cols-1 row-cols-sm-2 row-cols-xl-4">
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">@(Model.Range.Kind == DashboardRangeKind.Today ? "Today's Sales" : "Sales")</div>
+                        <div class="stat-value money">@Money(Model.Sales.Current)</div>
+                    </div>
+                    <span class="stat-icon good">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2 d-flex align-items-center gap-2 flex-wrap">
+                    <partial name="_StatTrend" model="@(new StatTrendViewModel { Metric = Model.Sales, ComparisonLabel = comparison })" />
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Orders</div>
+                        <div class="stat-value">@Model.Orders.Current.ToString("N0")</div>
+                    </div>
+                    <span class="stat-icon cat-1">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <path d="M16 10a4 4 0 0 1-8 0" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2 d-flex align-items-center gap-2 flex-wrap">
+                    <partial name="_StatTrend" model="@(new StatTrendViewModel { Metric = Model.Orders, ComparisonLabel = comparison })" />
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label" title="Sale price less the product's current purchase price">Gross Profit</div>
+                        <div class="stat-value money">@Money(Model.GrossProfit.Current)</div>
+                    </div>
+                    <span class="stat-icon cat-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                            <polyline points="17 6 23 6 23 12" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2 d-flex align-items-center gap-2 flex-wrap">
+                    <partial name="_StatTrend" model="@(new StatTrendViewModel { Metric = Model.GrossProfit, ComparisonLabel = comparison })" />
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Customers</div>
+                        <div class="stat-value">@Model.NewCustomers.Current.ToString("N0")</div>
+                    </div>
+                    <span class="stat-icon cat-1">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2 d-flex align-items-center gap-2 flex-wrap">
+                    <span>New in this period</span>
+                    <partial name="_StatTrend" model="@(new StatTrendViewModel { Metric = Model.NewCustomers, ComparisonLabel = comparison, AsPercent = false, NoComparisonHint = string.Empty })" />
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Low Stock</div>
+                        <div class="stat-value">@Model.LowStockCount</div>
+                    </div>
+                    <span class="stat-icon warning">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2">At or below reorder level</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Out of Stock</div>
+                        <div class="stat-value">@Model.OutOfStockCount</div>
+                    </div>
+                    <span class="stat-icon critical">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2">Nothing left on the shelf</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Exchanges</div>
+                        <div class="stat-value money">@Money(Model.ExchangedAmount)</div>
+                    </div>
+                    <span class="stat-icon warning">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 14 4 9 9 4" />
+                            <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2">Value of goods swapped back — no money leaves on an exchange</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="app-card stat-tile h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Outstanding</div>
+                        <div class="stat-value money">@Money(Model.OutstandingAmount)</div>
+                    </div>
+                    <span class="stat-icon cat-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="2" y="5" width="20" height="14" rx="2" />
+                            <line x1="2" y1="10" x2="22" y2="10" />
+                        </svg>
+                    </span>
+                </div>
+                <div class="stat-hint mt-2">Billed minus collected — checkout settles in full today</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-xl-4">
+            <div class="app-card h-100">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Sales Summary</h2>
+                    <span class="d-flex align-items-center gap-2">
+                        <a class="text-decoration-none fw-semibold" asp-controller="Reports" asp-action="Sales">View All</a>
+                        <partial name="_CollapseToggle" model="@("sales-summary")" />
+                    </span>
+                </div>
+
+                <div class="collapse show" id="sales-summary">
+                    <partial name="_Donut" model="methodDonut" />
+
+                    <div class="px-3 pb-3">
+                        <div class="d-flex justify-content-between meta-line">
+                            <span>Average sale</span>
+                            <span class="money fw-semibold">
+                                @Money(Model.Orders.Current == 0 ? 0m : Model.Sales.Current / Model.Orders.Current)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-8">
+            <div class="app-card h-100">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">@salesTitle</h2>
+                    <span class="d-flex align-items-center gap-2">
+                        <a class="text-decoration-none fw-semibold" asp-controller="Sales" asp-action="Index">View All</a>
+                        <partial name="_CollapseToggle" model="@("recent-sales")" />
+                    </span>
+                </div>
+
+                <div class="collapse show" id="recent-sales">
+                    @if (Model.RecentSales.Count == 0)
+                    {
+                        <div class="p-4 text-center stat-hint">No sales in this period yet.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table app-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Invoice</th>
+                                        <th scope="col">Time</th>
+                                        <th scope="col">Customer</th>
+                                        <th scope="col">Payment</th>
+                                        <th scope="col" class="text-end">Total</th>
+                                        <th scope="col" class="text-end">Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var sale in Model.RecentSales)
+                                    {
+                                        <tr class="row-brand">
+                                            <td class="cell-primary" style="font-variant-numeric: tabular-nums">@sale.InvoiceNumber</td>
+                                            <td class="cell-secondary">@sale.At.ToLocalTime().ToString("dd MMM HH:mm")</td>
+                                            <td class="cell-secondary">@(sale.CustomerName ?? "Walk-in")</td>
+                                            <td class="cell-secondary">@(sale.Method is null ? "—" : MethodName(sale.Method.Value))</td>
+                                            <td class="text-end money fw-semibold">@sale.Total.ToString("N2")</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary"
+                                                   asp-controller="Sales" asp-action="Receipt" asp-route-id="@sale.Id"
+                                                   target="_blank">Print</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Top Selling Products</h2>
+                    <span class="d-flex align-items-center gap-2">
+                        <span class="stat-hint">By units sold</span>
+                        <partial name="_CollapseToggle" model="@("top-products")" />
+                    </span>
+                </div>
+
+                <div class="collapse show" id="top-products">
+                    @if (Model.TopProducts.Count == 0)
+                    {
+                        <div class="p-4 text-center stat-hint">Nothing has sold in this period yet.</div>
+                    }
+                    else
+                    {
+                        var leader = Model.TopProducts.Max(t => t.UnitsSold);
+
+                        <div class="table-responsive">
+                            <table class="table app-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Product</th>
+                                        <th scope="col">SKU</th>
+                                        <th scope="col">Share of the leader</th>
+                                        <th scope="col" class="text-end">Units</th>
+                                        <th scope="col" class="text-end">Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var (product, index) in Model.TopProducts.Select((t, i) => (t, i)))
+                                    {
+                                        <tr class="row-category">
+                                            <td class="cell-secondary">@(index + 1)</td>
+                                            <td class="cell-primary">@product.Name</td>
+                                            <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@product.Sku</td>
+                                            <td style="min-width:140px">
+                                                @* The bar repeats the number rather than replacing it. *@
+                                                <div class="rank-bar" role="presentation">
+                                                    <span style="width:@(leader == 0 ? 0 : product.UnitsSold * 100 / leader)%"></span>
+                                                </div>
+                                            </td>
+                                            <td class="text-end money">@product.UnitsSold</td>
+                                            <td class="text-end money fw-semibold">@product.Revenue.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

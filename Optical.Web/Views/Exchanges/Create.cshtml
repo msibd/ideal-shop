@@ -1,0 +1,289 @@
+@using Optical.Domain.Enums
+@using Optical.Web.ViewModels
+@model Optical.Web.ViewModels.ExchangeFormViewModel
+@{
+    ViewData["Title"] = "Exchange Products";
+    var sale = Model.Sale!;
+
+    // Posted lines are matched to sale lines by SaleItemId, not by position, so a line that
+    // becomes fully exchanged between draws cannot shift the bindings.
+    var indexOf = Model.Returned
+        .Select((line, index) => (line.SaleItemId, index))
+        .ToDictionary(x => x.SaleItemId, x => x.index);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Exchange Products</h1>
+        <p class="app-brand-subtitle">
+            Against @sale.InvoiceNumber — @sale.SoldAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+            — @(sale.CustomerName ?? "Walk-in")
+        </p>
+    </div>
+    <a class="btn btn-light border" asp-controller="Sales" asp-action="Details" asp-route-id="@sale.SaleId">Back to sale</a>
+</div>
+
+@if (!sale.HasAnythingLeft)
+{
+    <div class="app-card p-4 text-center">
+        <p class="stat-value mb-2">Everything on this sale has already been exchanged.</p>
+        <a class="btn btn-primary" asp-controller="Sales" asp-action="Details" asp-route-id="@sale.SaleId">Back to sale</a>
+    </div>
+    return;
+}
+
+<form asp-action="Create" method="post">
+    <input type="hidden" asp-for="SaleId" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="alert alert-info" role="alert">
+        This shop does not refund money. The replacement must be worth at least as much as what
+        comes back &mdash; if it is worth more, the customer pays the difference.
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-xl-6">
+            <div class="app-card h-100">
+                <div class="app-card-header">
+                    <span class="app-card-title">Coming back</span>
+                    <span class="stat-hint">From @sale.InvoiceNumber</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Sold</th>
+                                <th scope="col" class="text-end">Done</th>
+                                <th scope="col" class="text-end">Price</th>
+                                <th scope="col" class="text-end" style="width:120px">Qty back</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in sale.Lines)
+                            {
+                                var i = indexOf[line.SaleItemId];
+
+                                <tr class="row-category">
+                                    <td class="cell-primary">
+                                        @line.ProductName
+                                        <div class="cell-secondary" style="font-variant-numeric: tabular-nums">@line.Sku</div>
+                                    </td>
+                                    <td class="text-end money">@line.QuantitySold</td>
+                                    <td class="text-end money">@line.QuantityAlreadyExchanged</td>
+                                    <td class="text-end money">@line.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end">
+                                        <input type="hidden" asp-for="Returned[i].SaleItemId" />
+                                        @if (line.IsFullyExchanged)
+                                        {
+                                            <input type="hidden" asp-for="Returned[i].Quantity" value="0" />
+                                            <span class="badge text-bg-secondary">Done</span>
+                                        }
+                                        else
+                                        {
+                                            <input class="form-control text-end return-qty" type="number"
+                                                   asp-for="Returned[i].Quantity"
+                                                   min="0" max="@line.QuantityExchangeable"
+                                                   data-unit-price="@line.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                   aria-label="Quantity of @line.ProductName coming back" />
+                                            <span class="stat-hint">up to @line.QuantityExchangeable</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end fw-semibold">Value coming back</td>
+                                <td class="text-end money fw-semibold" id="returned-total">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="app-card h-100">
+                <div class="app-card-header">
+                    <span class="app-card-title">Going out instead</span>
+                    <span class="stat-hint">Priced at today's sale price</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Replacement product</th>
+                                <th scope="col" class="text-end" style="width:120px">Qty</th>
+                                <th scope="col" class="text-end">Line total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.Replacements.Count; i++)
+                            {
+                                var index = i;
+
+                                <tr class="row-brand">
+                                    <td>
+                                        <select class="form-select replacement-product" asp-for="Replacements[index].ProductId"
+                                                aria-label="Replacement product">
+                                            <option value="">Choose a product</option>
+                                            @foreach (var option in sale.Replacements)
+                                            {
+                                                <option value="@option.Id" data-price="@option.SalePrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                                    @option.Name — @option.SalePrice.ToString("N2") (@option.InStock in stock)
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td class="text-end">
+                                        <input class="form-control text-end replacement-qty" type="number"
+                                               asp-for="Replacements[index].Quantity" min="0"
+                                               aria-label="Replacement quantity" />
+                                    </td>
+                                    <td class="text-end money replacement-line">0.00</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" class="text-end fw-semibold">Value going out</td>
+                                <td class="text-end money fw-semibold" id="replacement-total">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card p-4">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label" asp-for="Reason">Reason for exchange</label>
+                <select class="form-select" asp-for="Reason" asp-items="ExchangeReasons.SelectList()" id="exchange-reason">
+                    <option value="">Select a reason</option>
+                </select>
+                <span class="text-danger" asp-validation-for="Reason"></span>
+            </div>
+            <div class="col-12 col-md-8">
+                <label class="form-label" asp-for="Note">Note</label>
+                <input class="form-control" asp-for="Note" id="exchange-note"
+                       placeholder="Optional detail — required when the reason is Other" />
+                <span class="text-danger" asp-validation-for="Note"></span>
+            </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <p class="stat-label mb-1">Adjustment to collect</p>
+                <p class="stat-value mb-0 money" id="difference">0.00</p>
+                <p class="stat-hint mb-0" id="difference-hint">Even swap — no adjustment due.</p>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label" asp-for="PaymentMethod">Adjustment paid by</label>
+                <select class="form-select" asp-for="PaymentMethod"
+                        asp-items="Html.GetEnumSelectList<PaymentMethod>()">
+                    <option value="">Not needed</option>
+                </select>
+                <span class="text-danger" asp-validation-for="PaymentMethod"></span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" type="submit">Record exchange</button>
+            <a class="btn btn-light border" asp-controller="Sales" asp-action="Details" asp-route-id="@sale.SaleId">Cancel</a>
+        </div>
+
+        <p class="stat-hint mt-3 mb-0">
+            Every figure here is recalculated on the server from the original sale prices and today's
+            product prices before anything is saved.
+        </p>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // A running preview so the counter can see the difference before committing.
+        // The figures that get saved are always the server's own.
+        $(function () {
+            function recalculate() {
+                var returned = 0;
+
+                $('.return-qty').each(function () {
+                    var row = $(this);
+                    var quantity = parseInt(row.val(), 10);
+                    var max = parseInt(row.attr('max'), 10);
+
+                    if (isNaN(quantity) || quantity < 0) {
+                        return;
+                    }
+
+                    if (quantity > max) {
+                        row.val(max);
+                        quantity = max;
+                    }
+
+                    returned += quantity * parseFloat(row.data('unit-price'));
+                });
+
+                var replacement = 0;
+
+                $('.replacement-product').each(function () {
+                    var select = $(this);
+                    var row = select.closest('tr');
+                    var quantity = parseInt(row.find('.replacement-qty').val(), 10);
+                    var price = parseFloat(select.find('option:selected').data('price'));
+                    var lineTotal = 0;
+
+                    if (!isNaN(quantity) && quantity > 0 && !isNaN(price)) {
+                        lineTotal = quantity * price;
+                    }
+
+                    row.find('.replacement-line').text(lineTotal.toFixed(2));
+                    replacement += lineTotal;
+                });
+
+                $('#returned-total').text(returned.toFixed(2));
+                $('#replacement-total').text(replacement.toFixed(2));
+
+                var difference = replacement - returned;
+
+                if (difference < 0) {
+                    $('#difference').text((-difference).toFixed(2) + ' short');
+                    $('#difference-hint').text('The replacement must be worth at least ' + returned.toFixed(2) + '.');
+                } else {
+                    $('#difference').text(difference.toFixed(2));
+                    $('#difference-hint').text(difference > 0
+                        ? 'Collect this adjustment before handing the goods over.'
+                        : 'Even swap — no adjustment due.');
+                }
+            }
+
+            $('.return-qty, .replacement-qty, .replacement-product').on('input change', recalculate);
+
+            // "Other" needs an explanation; the server enforces this too.
+            var otherReason = '@((int)ExchangeReason.Other)';
+
+            function reasonChanged() {
+                var isOther = $('#exchange-reason').val() === otherReason;
+
+                $('#exchange-note')
+                    .prop('required', isOther)
+                    .attr('placeholder', isOther
+                        ? 'Describe the reason'
+                        : 'Optional detail — required when the reason is Other');
+            }
+
+            $('#exchange-reason').on('change', reasonChanged);
+            reasonChanged();
+
+            recalculate();
+        });
+    </script>
+}

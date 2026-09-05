@@ -1,0 +1,88 @@
+@model Optical.Web.ViewModels.ProfileViewModel
+@using Optical.Application.Common
+@{
+    ViewData["Title"] = "Your profile";
+    var role = User.IsInRole(AppRoles.Admin) ? AppRoles.Admin : AppRoles.Cashier;
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+    <div>
+        <h1 class="app-brand-title">Your profile</h1>
+        <p class="app-brand-subtitle">The name shown across the application</p>
+    </div>
+    <partial name="_AccountTabs" />
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-6">
+        <div class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Display name</h2>
+            </div>
+
+            <div class="p-4">
+                <form asp-action="Profile" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="mb-4">
+                        <label asp-for="FullName" class="form-label fw-semibold"></label>
+                        <input asp-for="FullName" class="form-control" autofocus placeholder="e.g. Rahim Uddin" />
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                        <div class="stat-hint mt-2">
+                            Shown in the header and in the account menu.
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">Save changes</button>
+                        <a class="btn btn-light border" asp-controller="Home" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="app-card mb-3">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Account</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table app-table">
+                    <tbody>
+                        <tr>
+                            <td class="cell-secondary" style="width:40%">Username</td>
+                            <td class="cell-primary">@Model.UserName</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Email</td>
+                            <td class="cell-primary">@(string.IsNullOrWhiteSpace(Model.Email) ? "—" : Model.Email)</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Role</td>
+                            <td>
+                                <span class="chip chip-category">@role.ToUpperInvariant()</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <div class="p-4">
+                <p class="stat-hint mb-0 d-flex align-items-start gap-2">
+                    <span class="d-inline-flex pt-1"><partial name="_InfoIcon" /></span>
+                    <span>
+                        Your <strong>username</strong> and <strong>role</strong> cannot be changed here.
+                        The username is your sign-in credential and the role is set by an administrator.
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

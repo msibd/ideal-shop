@@ -1,0 +1,84 @@
+@using Optical.Application.Common
+@model Optical.Web.ViewModels.RolePermissionsViewModel
+@{
+    ViewData["Title"] = "Roles & Permissions";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Roles &amp; Permissions</h1>
+        <p class="app-brand-subtitle">Tick a box to let that role reach that module</p>
+    </div>
+    <a class="btn btn-light border" asp-controller="Users" asp-action="Index">Staff accounts</a>
+</div>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<div class="alert alert-info" role="alert">
+    The list of modules is fixed &mdash; each one matches a screen the software actually checks.
+    Which role holds it is yours to change, and a change applies on that person's next page.
+    <strong>Admin keeps Staff Accounts permanently</strong>, so nobody can lock everyone out.
+</div>
+
+<form asp-action="Index" method="post">
+    <div class="app-card">
+        <div class="app-card-header">
+            <span class="app-card-title">Module access</span>
+            <span class="stat-hint">@Model.Rows.Count modules · @AppRoles.All.Length roles</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table app-table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Module</th>
+                        @foreach (var role in AppRoles.All)
+                        {
+                            <th scope="col" class="text-center">@role</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr class="row-category">
+                            <td>
+                                <div class="cell-primary">@row.Name</div>
+                                <div class="cell-secondary">@row.Description</div>
+                            </td>
+                            @foreach (var role in AppRoles.All)
+                            {
+                                var locked = AppPermissions.IsLocked(role, row.Key);
+                                var id = $"grant-{role}-{row.Key}";
+
+                                <td class="text-center">
+                                    @if (locked)
+                                    {
+                                        <input class="form-check-input" type="checkbox" checked disabled
+                                               aria-label="@row.Name for @role (always granted)" />
+                                        <input type="hidden" name="grants[@role]" value="@row.Key" />
+                                        <div class="stat-hint">always</div>
+                                    }
+                                    else
+                                    {
+                                        <input class="form-check-input" type="checkbox" id="@id"
+                                               name="grants[@role]" value="@row.Key"
+                                               checked="@row.IsGrantedTo(role)"
+                                               aria-label="@row.Name for @role" />
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="app-card-header border-top border-bottom-0">
+            <span class="stat-hint">
+                A role with no modules can still sign in but will not be able to reach anything.
+            </span>
+            <button class="btn btn-primary" type="submit">Save permissions</button>
+        </div>
+    </div>
+</form>

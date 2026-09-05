@@ -1,0 +1,97 @@
+@model Optical.Application.Features.Customers.CustomerListResult
+@{
+    ViewData["Title"] = "Customers";
+    var search = ViewData["Search"] as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Customers</h1>
+        <p class="app-brand-subtitle">@Model.TotalCount customer(s)</p>
+    </div>
+    <a class="action-btn action-solid-1 w-auto" asp-action="Create">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+        New Customer
+    </a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:340px" name="search" value="@search"
+                   placeholder="Search by name or phone" />
+            <button class="btn btn-primary" type="submit">Search</button>
+            @if (!string.IsNullOrWhiteSpace(search))
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No customers found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Address</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var customer in Model.Items)
+                    {
+                        <tr class="row-brand">
+                            <td class="cell-primary">
+                                <a class="text-decoration-none" asp-action="Details" asp-route-id="@customer.Id">@customer.Name</a>
+                            </td>
+                            <td class="cell-secondary">@customer.Phone</td>
+                            <td class="cell-secondary">@(customer.Email ?? "—")</td>
+                            <td class="cell-secondary">@(customer.Address ?? "—")</td>
+                            <td>
+                                <span class="chip @(customer.IsActive ? "chip-active" : "chip-inactive")">
+                                    @(customer.IsActive ? "ACTIVE" : "INACTIVE")
+                                </span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@customer.Id">Details</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@customer.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount customer(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="Index" asp-route-search="@search" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="Index" asp-route-search="@search" asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

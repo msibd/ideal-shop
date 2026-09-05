@@ -1,0 +1,784 @@
+@using Optical.Application.Features.POS
+@using Optical.Domain.Enums
+@model Optical.Web.ViewModels.PosCheckoutViewModel
+@{
+    ViewData["Title"] = "Point of Sale";
+
+    // Only used to redraw a rejected cart. Prices here came from the database, not the browser.
+    var cartRows = Model.Items
+        .Select(line => new
+        {
+            Line = line,
+            Product = Model.CartProducts.FirstOrDefault(p => p.Id == line.ProductId)
+        })
+        .Where(row => row.Product is not null)
+        .ToList();
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+        <h1 class="app-brand-title">Point of Sale</h1>
+        <p class="app-brand-subtitle mb-0">Search a product, build the cart, take payment</p>
+    </div>
+
+    <div class="app-card px-3 py-2 text-end">
+        <div class="stat-label">Last Invoice</div>
+        <div class="pos-invoice-number" id="last-invoice-number">
+            @(Model.LastSale?.InvoiceNumber ?? "No sales yet")
+        </div>
+        <div class="cell-secondary" id="last-invoice-detail">
+            @(Model.LastSale is null
+                ? "This till has not rung up a sale"
+                : $"{Model.LastSale.TotalAmount:N2} • {Model.LastSale.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm}")
+        </div>
+        <a class="btn btn-sm btn-outline-primary mt-2 @(Model.LastSale is null ? "d-none" : "")"
+           id="last-invoice-receipt" target="_blank"
+           href="@(Model.LastSale is null ? "#" : Url.Action("Receipt", "Sales", new { id = Model.LastSale.Id }))">
+            Print receipt
+        </a>
+    </div>
+</div>
+
+@* Server-rendered when JavaScript is off; filled by the till script otherwise. *@
+<div id="checkout-messages">
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small" role="alert"></div>
+    }
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-5">
+        <div class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Products</h2>
+            </div>
+
+            <div class="p-3">
+                <div class="pos-field mb-3">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input id="pos-search" class="form-control" type="search" autocomplete="off"
+                           placeholder="Scan a barcode, or search by name or SKU"
+                           aria-label="Scan a barcode, or search by name or SKU" autofocus />
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <select id="pos-category" class="form-select" aria-label="Filter by category">
+                            <option value="">All Categories</option>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="pos-sort" class="form-select" aria-label="Sort products">
+                            <option value="@PosProductSort.NameAscending">Sort: Name (A&ndash;Z)</option>
+                            <option value="@PosProductSort.NameDescending">Sort: Name (Z&ndash;A)</option>
+                            <option value="@PosProductSort.PriceLowToHigh">Sort: Price (low first)</option>
+                            <option value="@PosProductSort.PriceHighToLow">Sort: Price (high first)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="pos-results" class="pos-list d-none"></div>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                    <span class="stat-hint" id="pos-results-count"></span>
+                    <a class="text-decoration-none fw-semibold" asp-controller="Products" asp-action="Index">
+                        View all products &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="pos-hint mt-3" id="pos-results-empty">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 18h6" />
+                <path d="M10 22h4" />
+                <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" />
+            </svg>
+            <span id="pos-results-message">Start typing to find a product.</span>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <form asp-action="Checkout" method="post" id="pos-form">
+            <div class="app-card mb-3">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Cart</h2>
+                    <span class="stat-hint d-flex align-items-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+                        </svg>
+                        Prices are confirmed by the server at checkout
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Unit price</th>
+                                <th scope="col" style="width:130px">Qty</th>
+                                <th scope="col" style="width:110px" class="text-end">Discount</th>
+                                <th scope="col" class="text-end">Line total</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-lines">
+                            @for (var i = 0; i < cartRows.Count; i++)
+                            {
+                                var product = cartRows[i].Product!;
+                                <tr class="cart-line" data-product-id="@product.Id"
+                                    data-price="@product.SalePrice.ToString("0.00")" data-stock="@product.Stock"
+                                    data-discount-percent="@product.ActiveDiscountPercent.ToString("0.##")">
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="pos-thumb sm">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                </svg>
+                                            </span>
+                                            <span>
+                                                <span class="cell-primary d-block">@product.Name</span>
+                                                <span class="cell-secondary">SKU: @product.Sku</span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end money">@product.SalePrice.ToString("N2")</td>
+                                    <td>
+                                        <input type="hidden" name="Items[@i].ProductId" value="@product.Id" />
+                                        <span class="qty-stepper">
+                                            <button type="button" class="qty-step" data-step="-1" aria-label="Decrease quantity">&minus;</button>
+                                            <input class="line-qty" type="number" name="Items[@i].Quantity"
+                                                   value="@cartRows[i].Line.Quantity" min="1" max="@product.Stock"
+                                                   aria-label="Quantity" />
+                                            <button type="button" class="qty-step" data-step="1" aria-label="Increase quantity">+</button>
+                                        </span>
+                                    </td>
+                                    <td class="text-end money line-discount">0.00</td>
+                                    <td class="text-end money line-total">0.00</td>
+                                    <td class="text-end">
+                                        <button type="button" class="line-remove" aria-label="Remove @product.Name">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                <line x1="10" y1="11" x2="10" y2="17" />
+                                                <line x1="14" y1="11" x2="14" y2="17" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="cart-empty" class="p-4 text-center stat-hint @(cartRows.Count > 0 ? "d-none" : "")">
+                    The cart is empty.
+                </div>
+
+                <div class="app-card-header border-top border-bottom-0">
+                    <button type="button" id="clear-cart" class="action-btn action-ghost-1 w-auto px-3 py-2" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        </svg>
+                        Clear Cart
+                    </button>
+
+                    <span class="d-flex align-items-center gap-3">
+                        <span class="stat-hint" id="cart-count">0 items</span>
+                        <span class="stat-hint d-none" id="cart-discount-summary">
+                            Subtotal <span id="cart-subtotal">0.00</span> &minus;
+                            discount <span id="cart-discount">0.00</span>
+                        </span>
+                        <span class="pos-total"><span id="grand-total">0.00</span></span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Payment</h2>
+                    <span class="d-flex align-items-baseline gap-2">
+                        <span class="stat-hint">Total</span>
+                        <span class="pos-total"><span id="grand-total-payment">0.00</span></span>
+                    </span>
+                </div>
+
+                <div class="p-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label for="customer-search" class="form-label fw-semibold">Customer</label>
+                            <input type="hidden" asp-for="CustomerId" id="customer-id" />
+
+                            <div id="customer-picker" class="@(Model.SelectedCustomer is null ? "" : "d-none")">
+                                <div class="pos-field">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                        <circle cx="12" cy="7" r="4" />
+                                    </svg>
+                                    <input id="customer-search" class="form-control" type="search" autocomplete="off"
+                                           placeholder="Search name or mobile number" />
+                                </div>
+                                <div id="customer-results" class="list-group list-group-flush mt-2"></div>
+                                <span id="customer-hint" class="stat-hint">Leave empty for a walk-in customer.</span>
+                            </div>
+
+                            <div id="customer-chosen"
+                                 class="d-flex justify-content-between align-items-center gap-2 @(Model.SelectedCustomer is null ? "d-none" : "")">
+                                <span>
+                                    <span id="customer-chosen-name" class="cell-primary d-block">@Model.SelectedCustomer?.Name</span>
+                                    <span id="customer-chosen-phone" class="cell-secondary">@Model.SelectedCustomer?.Phone</span>
+                                </span>
+                                <button type="button" id="customer-clear" class="btn btn-sm btn-outline-secondary">Change</button>
+                            </div>
+
+                            <span asp-validation-for="CustomerId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label asp-for="PaymentMethod" class="form-label fw-semibold"></label>
+                            <div class="pos-field">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                                    <line x1="2" y1="10" x2="22" y2="10" />
+                                </svg>
+                                <select asp-for="PaymentMethod" class="form-select">
+                                    <option value="">Select a method</option>
+                                    <option value="@((int)PaymentMethod.Cash)">Cash</option>
+                                    <option value="@((int)PaymentMethod.Card)">Card</option>
+                                    <option value="@((int)PaymentMethod.MobileBanking)">Mobile Banking</option>
+                                </select>
+                            </div>
+                            <span asp-validation-for="PaymentMethod" class="text-danger small"></span>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" id="checkout-button" class="action-btn action-solid-1 w-auto px-4 mt-4" disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Checkout
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Cart interaction only. Every price, line total and grand total shown here is
+        // recalculated by the server at checkout, so nothing on this page can change what is charged.
+        $(function () {
+            var searchBox = $('#pos-search');
+            var categoryFilter = $('#pos-category');
+            var sortFilter = $('#pos-sort');
+            var results = $('#pos-results');
+            var resultsCount = $('#pos-results-count');
+            var hint = $('#pos-results-empty');
+            var hintMessage = $('#pos-results-message');
+            var cart = $('#cart-lines');
+            var searchUrl = '@Url.Action("Search")';
+            var scanUrl = '@Url.Action("Scan")';
+
+            var receiptUrl = '@Url.Action("Receipt", "Sales")';
+            var timer = null;
+            var requestId = 0;
+
+            var boxIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                + '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />'
+                + '<polyline points="3.27 6.96 12 12.01 20.73 6.96" /></svg>';
+
+            var trashIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                + '<polyline points="3 6 5 6 21 6" />'
+                + '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />'
+                + '<line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>';
+
+            function money(value) {
+                return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            function inCart(productId) {
+                return cart.find('tr.cart-line[data-product-id="' + productId + '"]').length > 0;
+            }
+
+            function showHint(text) {
+                hintMessage.text(text);
+                hint.removeClass('d-none');
+            }
+
+            function reindex() {
+                cart.find('tr.cart-line').each(function (index) {
+                    $(this).find('[name]').each(function () {
+                        $(this).attr('name', $(this).attr('name').replace(/Items\[\d+\]/, 'Items[' + index + ']'));
+                    });
+                });
+            }
+
+            function recalculate() {
+                var subtotal = 0;
+                var discountTotal = 0;
+                var units = 0;
+
+                cart.find('tr.cart-line').each(function () {
+                    var row = $(this);
+                    var quantity = parseInt(row.find('.line-qty').val(), 10) || 0;
+                    var lineGross = quantity * (parseFloat(row.data('price')) || 0);
+
+                    // The percentage belongs to the product, so nothing here is editable.
+                    var percent = parseFloat(row.data('discount-percent')) || 0;
+                    var discount = Math.round(lineGross * percent) / 100;
+
+                    subtotal += lineGross;
+                    discountTotal += discount;
+                    units += quantity;
+
+                    row.find('.line-discount').text(discount > 0 ? '-' + money(discount) : '—');
+                    row.find('.line-total').text(money(lineGross - discount));
+
+                    var stock = parseInt(row.data('stock'), 10);
+                    row.find('.qty-step[data-step="-1"]').prop('disabled', quantity <= 1);
+                    row.find('.qty-step[data-step="1"]').prop('disabled', quantity >= stock);
+                });
+
+                var total = subtotal - discountTotal;
+                var count = cart.find('tr.cart-line').length;
+
+                $('#cart-subtotal').text(money(subtotal));
+                $('#cart-discount').text(money(discountTotal));
+                $('#cart-discount-summary').toggleClass('d-none', discountTotal <= 0);
+
+                $('#grand-total, #grand-total-payment').text(money(total));
+                $('#cart-count').text(units + (units === 1 ? ' item' : ' items'));
+                $('#cart-empty').toggleClass('d-none', count > 0);
+                $('#checkout-button').prop('disabled', count === 0);
+                $('#clear-cart').prop('disabled', count === 0);
+
+                syncResults();
+            }
+
+            function removeFromCart(productId) {
+                cart.find('tr.cart-line[data-product-id="' + productId + '"]').remove();
+                reindex();
+                recalculate();
+            }
+
+            // A product already in the cart drops out of the results list, and
+            // comes back the moment its cart line is removed.
+            function syncResults() {
+                var rows = results.find('.pos-list-row');
+                var visible = 0;
+
+                rows.each(function () {
+                    var row = $(this);
+                    var alreadyInCart = inCart(row.attr('data-product-id'));
+
+                    row.toggleClass('d-none', alreadyInCart);
+
+                    if (!alreadyInCart) {
+                        visible++;
+                    }
+                });
+
+                if (rows.length > 0 && visible === 0) {
+                    results.addClass('d-none');
+                    showHint('Every matching product is already in the cart.');
+                }
+            }
+
+            // After a product goes into the cart the box is ready for the next one:
+            // the spent keyword and its results are cleared, not left showing a dead end.
+            function resetSearch() {
+                clearTimeout(timer);
+                searchBox.val('');
+                results.empty().addClass('d-none');
+                resultsCount.text('');
+                showHint('Start typing to find a product.');
+                searchBox.trigger('focus');
+            }
+
+            function addToCart(product) {
+                if (product.stock <= 0) {
+                    return;
+                }
+
+                var existing = cart.find('tr.cart-line[data-product-id="' + product.id + '"]');
+
+                if (existing.length) {
+                    var input = existing.find('.line-qty');
+                    input.val(Math.min((parseInt(input.val(), 10) || 0) + 1, product.stock));
+                    recalculate();
+                    resetSearch();
+                    return;
+                }
+
+                var index = cart.find('tr.cart-line').length;
+
+                var row = $('<tr class="cart-line"></tr>')
+                    .attr('data-product-id', product.id)
+                    .attr('data-price', product.salePrice)
+                    .attr('data-stock', product.stock)
+                    .attr('data-discount-percent', product.activeDiscountPercent || 0);
+
+                var nameCell = $('<td></td>').append(
+                    $('<div class="d-flex align-items-center gap-2"></div>')
+                        .append($('<span class="pos-thumb sm"></span>').html(boxIcon))
+                        .append($('<span></span>')
+                            .append($('<span class="cell-primary d-block"></span>').text(product.name))
+                            .append($('<span class="cell-secondary"></span>').text('SKU: ' + product.sku))));
+                row.append(nameCell);
+
+                row.append($('<td class="text-end money"></td>').text(money(product.salePrice)));
+
+                var stepper = $('<span class="qty-stepper"></span>')
+                    .append('<button type="button" class="qty-step" data-step="-1" aria-label="Decrease quantity">&minus;</button>')
+                    .append($('<input type="number" class="line-qty" min="1" aria-label="Quantity" />')
+                        .attr('name', 'Items[' + index + '].Quantity')
+                        .attr('max', product.stock)
+                        .val(1))
+                    .append('<button type="button" class="qty-step" data-step="1" aria-label="Increase quantity">+</button>');
+
+                row.append($('<td></td>')
+                    .append($('<input type="hidden" />')
+                        .attr('name', 'Items[' + index + '].ProductId')
+                        .val(product.id))
+                    .append(stepper));
+
+                row.append('<td class="text-end money line-discount">0.00</td>');
+                row.append('<td class="text-end money line-total">0.00</td>');
+                row.append($('<td class="text-end"></td>').append(
+                    $('<button type="button" class="line-remove"></button>')
+                        .attr('aria-label', 'Remove ' + product.name)
+                        .html(trashIcon)));
+
+                cart.append(row);
+                recalculate();
+                resetSearch();
+            }
+
+            function renderResults(payload) {
+                var products = payload.items || [];
+
+                results.empty();
+
+                if (products.length === 0) {
+                    results.addClass('d-none');
+                    resultsCount.text('');
+                    showHint('No matching product.');
+                    return;
+                }
+
+                $.each(products, function (_, product) {
+                    var outOfStock = product.stock <= 0;
+
+                    var details = $('<div class="flex-grow-1"></div>')
+                        .append($('<span class="cell-primary d-block"></span>').text(product.name))
+                        .append($('<span class="cell-secondary d-block"></span>').text('SKU: ' + product.sku))
+                        .append($('<span class="pos-stock"></span>')
+                            .addClass(outOfStock ? 'is-out' : '')
+                            .text(outOfStock ? 'Out of stock' : 'In stock: ' + product.stock));
+
+                    if (product.activeDiscountPercent > 0) {
+                        details.append($('<span class="badge bg-success ms-2"></span>')
+                            .text(product.activeDiscountPercent + '% off'));
+                    }
+
+                    var add = $('<button type="button" class="pos-add" aria-label="Add to cart">+</button>')
+                        .prop('disabled', outOfStock)
+                        .data('product', product);
+
+                    results.append(
+                        $('<div class="pos-list-row"></div>')
+                            .attr('data-product-id', product.id)
+                            .append($('<span class="pos-thumb"></span>').html(boxIcon))
+                            .append(details)
+                            .append(product.activeDiscountPercent > 0
+                                ? $('<span class="money text-end"></span>')
+                                    .append($('<s class="text-secondary d-block small"></s>').text(money(product.salePrice)))
+                                    .append($('<span></span>').text(money(product.effectivePrice)))
+                                : $('<span class="money"></span>').text(money(product.salePrice)))
+                            .append(add));
+                });
+
+                results.removeClass('d-none');
+                hint.addClass('d-none');
+                resultsCount.text('Showing 1 to ' + products.length + ' of ' + payload.totalCount + ' products');
+
+                syncResults();
+            }
+
+            function search() {
+                var id = ++requestId;
+
+                $.getJSON(searchUrl, {
+                    term: searchBox.val(),
+                    categoryId: categoryFilter.val(),
+                    sort: sortFilter.val()
+                })
+                    .done(function (payload) {
+                        // A slow earlier search must never overwrite a newer one.
+                        if (id === requestId) {
+                            renderResults(payload);
+                        }
+                    })
+                    .fail(function () {
+                        if (id !== requestId) {
+                            return;
+                        }
+
+                        results.empty().addClass('d-none');
+                        resultsCount.text('');
+                        showHint('Product search is unavailable. Please try again.');
+                    });
+            }
+
+            searchBox.on('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(search, 250);
+            });
+
+            // A barcode scanner is a keyboard: it types the code and presses Enter. So Enter
+            // asks the server whether the text is a barcode, and only falls back to an ordinary
+            // search when it is not. Enter must never submit the checkout form by accident.
+            searchBox.on('keydown', function (event) {
+                if (event.key !== 'Enter') {
+                    return;
+                }
+
+                event.preventDefault();
+                clearTimeout(timer);
+
+                var typed = searchBox.val().trim();
+
+                if (typed === '') {
+                    return;
+                }
+
+                $.getJSON(scanUrl, { barcode: typed })
+                    .done(function (result) {
+                        if (!result.found) {
+                            // Not a barcode we know, so treat it as an ordinary keyword.
+                            search();
+                            return;
+                        }
+
+                        if (result.product.stock <= 0) {
+                            showHint('"' + result.product.name + '" is out of stock.');
+                            return;
+                        }
+
+                        addToCart(result.product);
+                    })
+                    .fail(search);
+            });
+
+            categoryFilter.add(sortFilter).on('change', search);
+
+            results.on('click', '.pos-add', function () {
+                addToCart($(this).data('product'));
+            });
+
+            cart.on('click', '.line-remove', function () {
+                removeFromCart($(this).closest('tr').attr('data-product-id'));
+            });
+
+            cart.on('click', '.qty-step', function () {
+                var row = $(this).closest('tr');
+                var input = row.find('.line-qty');
+                var stock = parseInt(row.data('stock'), 10);
+                var next = (parseInt(input.val(), 10) || 1) + parseInt($(this).data('step'), 10);
+
+                input.val(Math.min(Math.max(next, 1), stock));
+                recalculate();
+            });
+
+            cart.on('input', '.line-qty', recalculate);
+
+            // Never let the browser offer more than the stock the server reported.
+            cart.on('change', '.line-qty', function () {
+                var input = $(this);
+                var stock = parseInt(input.closest('tr').data('stock'), 10);
+
+                input.val(Math.min(Math.max(parseInt(input.val(), 10) || 1, 1), stock));
+                recalculate();
+            });
+
+            $('#clear-cart').on('click', function () {
+                cart.empty();
+                recalculate();
+                resetSearch();
+            });
+
+            // --- Customer picker: find the customer by name or mobile number ---
+            var customerSearch = $('#customer-search');
+            var customerResults = $('#customer-results');
+            var customerHint = $('#customer-hint');
+            var customerId = $('#customer-id');
+            var customerSearchUrl = '@Url.Action("SearchCustomers")';
+            var customerTimer = null;
+
+            function chooseCustomer(customer) {
+                customerId.val(customer.id);
+                $('#customer-chosen-name').text(customer.name);
+                $('#customer-chosen-phone').text(customer.phone);
+                $('#customer-chosen').removeClass('d-none');
+                $('#customer-picker').addClass('d-none');
+                customerResults.empty();
+                customerSearch.val('');
+            }
+
+            function clearCustomer() {
+                customerId.val('');
+                $('#customer-chosen').addClass('d-none');
+                $('#customer-picker').removeClass('d-none');
+                customerHint.removeClass('d-none').text('Leave empty for a walk-in customer.');
+                customerResults.empty();
+                customerSearch.val('');
+            }
+
+            function renderCustomers(customers) {
+                customerResults.empty();
+                customerHint.toggleClass('d-none', customers.length > 0);
+
+                if (customers.length === 0) {
+                    customerHint.removeClass('d-none').text('No matching customer.');
+                    return;
+                }
+
+                $.each(customers, function (_, customer) {
+                    customerResults.append(
+                        $('<button type="button" class="list-group-item list-group-item-action"></button>')
+                            .data('customer', customer)
+                            .append($('<span class="cell-primary d-block"></span>').text(customer.name))
+                            .append($('<span class="cell-secondary"></span>').text(customer.phone)));
+                });
+            }
+
+            function searchCustomers() {
+                var term = customerSearch.val();
+
+                if (!term) {
+                    customerResults.empty();
+                    customerHint.removeClass('d-none').text('Leave empty for a walk-in customer.');
+                    return;
+                }
+
+                $.getJSON(customerSearchUrl, { term: term }, renderCustomers)
+                    .fail(function () {
+                        customerResults.empty();
+                        customerHint.removeClass('d-none')
+                            .text('Customer search is unavailable. Please try again.');
+                    });
+            }
+
+            customerSearch.on('input', function () {
+                clearTimeout(customerTimer);
+                customerTimer = setTimeout(searchCustomers, 250);
+            });
+
+            // This box sits inside the checkout form, so Enter must search, never submit.
+            customerSearch.on('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    clearTimeout(customerTimer);
+                    searchCustomers();
+                }
+            });
+
+            customerResults.on('click', 'button', function () {
+                chooseCustomer($(this).data('customer'));
+            });
+
+            $('#customer-clear').on('click', clearCustomer);
+
+            // --- Checkout: post the sale without losing the screen ---
+            var messages = $('#checkout-messages');
+
+            function showMessage(cssClass, text) {
+                messages.empty().append(
+                    $('<div class="alert py-2 small" role="alert"></div>').addClass(cssClass).text(text));
+            }
+
+            function showErrors(errors) {
+                var list = $('<ul class="mb-0 ps-3"></ul>');
+
+                $.each(errors, function (_, error) {
+                    list.append($('<li></li>').text(error));
+                });
+
+                messages.empty().append(
+                    $('<div class="alert alert-danger py-2 small" role="alert"></div>').append(list));
+            }
+
+            // Everything the next customer must not inherit from the last sale.
+            function resetSale() {
+                cart.empty();
+                clearCustomer();
+                $('#PaymentMethod').val('');
+                recalculate();
+                resetSearch();
+            }
+
+            $('#pos-form').on('submit', function (event) {
+                event.preventDefault();
+
+                var form = $(this);
+
+                // Let unobtrusive validation speak first when it has something to say.
+                if (form.data('validator') && !form.valid()) {
+                    return;
+                }
+
+                if (cart.find('tr.cart-line').length === 0) {
+                    showErrors(['The cart is empty.']);
+                    return;
+                }
+
+                $('#checkout-button').prop('disabled', true);
+
+                $.post(form.attr('action'), form.serialize())
+                    .done(function (result) {
+                        if (result && result.success) {
+                            resetSale();
+                            showMessage('alert-success', result.message);
+
+                            $('#last-invoice-number').text(result.invoiceNumber);
+                            $('#last-invoice-detail').text(result.total + ' • ' + result.at);
+                            $('#last-invoice-receipt')
+                                .attr('href', receiptUrl + '/' + result.saleId)
+                                .removeClass('d-none');
+                            return;
+                        }
+
+                        showErrors(result && result.errors && result.errors.length
+                            ? result.errors
+                            : ['The sale was rejected. Please check the cart and try again.']);
+                    })
+                    .fail(function () {
+                        // The sale may or may not have been taken, so say so rather than guess.
+                        showErrors(['Checkout could not be completed. Check the sale before retrying.']);
+                    })
+                    .always(function () {
+                        // Restores the button to whatever the cart now justifies.
+                        recalculate();
+                    });
+            });
+
+            recalculate();
+        });
+    </script>
+}

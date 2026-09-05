@@ -1,0 +1,84 @@
+@using Optical.Domain.Enums
+@using Optical.Web.ViewModels
+@model Optical.Application.Features.Exchanges.ExchangeDetails
+@{
+    ViewData["Title"] = $"Exchange {Model.ExchangeNumber}";
+
+    string MethodName(PaymentMethod method) =>
+        method == PaymentMethod.MobileBanking ? "Mobile Banking" : method.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">@Model.ExchangeNumber</h1>
+        <p class="app-brand-subtitle">
+            @Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm") — against @Model.InvoiceNumber
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleId">View sale</a>
+        <a class="btn btn-light border" asp-action="Index">Back to exchanges</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Adjustment collected</p>
+            <p class="stat-value mb-1">@Model.AmountPaid.ToString("N2")</p>
+            <p class="stat-hint mb-3">
+                @if (Model.AmountPaid > 0)
+                {
+                    <text>Paid by @(Model.PaymentMethod is null ? "—" : MethodName(Model.PaymentMethod.Value))</text>
+                }
+                else
+                {
+                    <text>Even swap — no adjustment was due</text>
+                }
+            </p>
+
+            <p class="stat-label">Value swapped back</p>
+            <p class="meta-line mb-3">@Model.ReturnedAmount.ToString("N2")</p>
+
+            <p class="stat-label">Value handed out</p>
+            <p class="meta-line mb-3">@Model.ReplacementAmount.ToString("N2")</p>
+
+            <p class="stat-label">Customer</p>
+            <p class="meta-line mb-3">@(Model.CustomerName ?? "Walk-in")</p>
+
+            <p class="stat-label">Phone</p>
+            <p class="meta-line mb-3">@(Model.CustomerPhone ?? "—")</p>
+
+            <p class="stat-label">Original sale</p>
+            <p class="meta-line mb-3">
+                @Model.InvoiceNumber — @Model.SoldAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+            </p>
+
+            <p class="stat-label">Reason</p>
+            <p class="meta-line mb-2">
+                <span class="chip chip-brand">@ExchangeReasons.Name(Model.Reason).ToUpperInvariant()</span>
+            </p>
+
+            <p class="stat-label">Note</p>
+            <p class="meta-line mb-0">@(Model.Note ?? "—")</p>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="app-card mb-3">
+            <div class="app-card-header">
+                <span class="app-card-title">Came back</span>
+                <span class="stat-hint">At the price originally paid</span>
+            </div>
+            <partial name="_ExchangeLines" model="Model.ReturnedItems" />
+        </div>
+
+        <div class="app-card">
+            <div class="app-card-header">
+                <span class="app-card-title">Went out</span>
+                <span class="stat-hint">At the sale price on the day of the exchange</span>
+            </div>
+            <partial name="_ExchangeLines" model="Model.ReplacementItems" />
+        </div>
+    </div>
+</div>

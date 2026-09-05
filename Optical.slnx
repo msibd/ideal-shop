@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Optical.Application/Optical.Application.csproj" />
+  <Project Path="Optical.Domain/Optical.Domain.csproj" />
+  <Project Path="Optical.Infrastructure/Optical.Infrastructure.csproj" />
+  <Project Path="Optical.Tests/Optical.Tests.csproj" />
+  <Project Path="Optical.Web/Optical.Web.csproj" />
+</Solution>

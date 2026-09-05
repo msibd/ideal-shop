@@ -1,0 +1,35 @@
+@model IReadOnlyList<Optical.Application.Features.Exchanges.ExchangeLineDetails>
+
+<div class="table-responsive">
+    <table class="table app-table mb-0">
+        <thead>
+            <tr>
+                <th scope="col">SKU</th>
+                <th scope="col">Product</th>
+                <th scope="col" class="text-end">Quantity</th>
+                <th scope="col" class="text-end">Unit price</th>
+                <th scope="col" class="text-end">Line total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr class="row-category">
+                    <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@item.Sku</td>
+                    <td class="cell-primary">@item.ProductName</td>
+                    <td class="text-end money">@item.Quantity</td>
+                    <td class="text-end money">@item.UnitPrice.ToString("N2")</td>
+                    <td class="text-end money">@item.LineTotal.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" class="text-end fw-semibold">Total</td>
+                <td class="text-end money fw-semibold">@Model.Sum(i => i.Quantity)</td>
+                <td></td>
+                <td class="text-end money fw-semibold">@Model.Sum(i => i.LineTotal).ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>

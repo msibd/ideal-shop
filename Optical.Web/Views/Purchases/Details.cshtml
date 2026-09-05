@@ -1,0 +1,71 @@
+@model Optical.Application.Features.Purchases.PurchaseDetails
+@{
+    ViewData["Title"] = $"Purchase #{Model.Id}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Purchase #@Model.Id</h1>
+        <p class="app-brand-subtitle">@Model.PurchaseDate.ToString("dd MMM yyyy") — @Model.SupplierName</p>
+    </div>
+    <a class="btn btn-light border" asp-action="Index">Back to purchases</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Supplier</p>
+            <p class="stat-value mb-3">@Model.SupplierName</p>
+
+            <p class="stat-label">Phone</p>
+            <p class="meta-line mb-3">@(Model.SupplierPhone ?? "—")</p>
+
+            <p class="stat-label">Invoice number</p>
+            <p class="meta-line mb-3">@(Model.InvoiceNumber ?? "—")</p>
+
+            <p class="stat-label">Recorded</p>
+            <p class="meta-line mb-0">@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="app-card">
+            <div class="app-card-header">
+                <span class="app-card-title">Items</span>
+                <span class="stat-hint">@Model.Items.Count line(s)</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table app-table mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">SKU</th>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">Quantity</th>
+                            <th scope="col" class="text-end">Unit cost</th>
+                            <th scope="col" class="text-end">Line total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr class="row-category">
+                                <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@item.Sku</td>
+                                <td class="cell-primary">@item.ProductName</td>
+                                <td class="text-end money">@item.Quantity</td>
+                                <td class="text-end money">@item.PurchasePrice.ToString("N2")</td>
+                                <td class="text-end money">@item.LineTotal.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-end fw-semibold">Total</td>
+                            <td class="text-end money fw-semibold">@Model.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

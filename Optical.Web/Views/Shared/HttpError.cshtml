@@ -1,0 +1,20 @@
+@{
+    var code = ViewData["StatusCode"] as int? ?? 404;
+    var title = code switch
+    {
+        403 => "You do not have access to this page",
+        404 => "Page not found",
+        _ => "That request could not be completed"
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="app-card p-4 text-center mx-auto" style="max-width:520px">
+    <p class="stat-label">Error @code</p>
+    <h1 class="app-brand-title">@title</h1>
+    <p class="app-brand-subtitle">
+        Check the address, or head back and try again from the menu.
+    </p>
+
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+</div>

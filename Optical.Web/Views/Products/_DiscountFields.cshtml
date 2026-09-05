@@ -1,0 +1,133 @@
+@model Optical.Web.ViewModels.ProductFormViewModel
+@{
+    var today = DateOnly.FromDateTime(DateTime.Now);
+}
+
+<div class="border rounded p-3 mt-4" id="discount-section">
+    <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2 mb-3">
+        <h2 class="h6 fw-semibold mb-0">Discount</h2>
+        <span class="text-secondary small">
+            Applied automatically at the till while the offer is running. Leave the percentage
+            at 0 for no discount.
+        </span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-md-3">
+            <label asp-for="DiscountPercent" class="form-label fw-semibold"></label>
+            <div class="input-group">
+                <input asp-for="DiscountPercent" id="discount-percent" class="form-control money"
+                       type="number" step="0.01" min="0" max="100" />
+                <span class="input-group-text">%</span>
+            </div>
+            <span asp-validation-for="DiscountPercent" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12 col-md-9">
+            <span class="form-label fw-semibold d-block">Runs for</span>
+            <div class="btn-group flex-wrap" role="group" aria-label="Discount length">
+                <button type="button" class="btn btn-outline-secondary btn-sm discount-preset" data-days="1">Today</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm discount-preset" data-days="3">3 days</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm discount-preset" data-days="7">7 days</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm discount-preset" data-days="30">30 days</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="discount-clear">Clear</button>
+            </div>
+            <span class="text-secondary small d-block mt-1">
+                A preset starts the offer today. Set the dates by hand for anything else.
+            </span>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <label asp-for="DiscountStartsOn" class="form-label fw-semibold"></label>
+            <input asp-for="DiscountStartsOn" id="discount-starts" class="form-control"
+                   type="date" asp-format="{0:yyyy-MM-dd}" />
+            <span asp-validation-for="DiscountStartsOn" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <label asp-for="DiscountEndsOn" class="form-label fw-semibold"></label>
+            <input asp-for="DiscountEndsOn" id="discount-ends" class="form-control"
+                   type="date" asp-format="{0:yyyy-MM-dd}" />
+            <span asp-validation-for="DiscountEndsOn" class="text-danger small"></span>
+        </div>
+
+        <div class="col-12 col-md-6 d-flex align-items-end">
+            <span class="text-secondary small" id="discount-summary"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Convenience only. The server decides whether an offer is valid and whether it is
+    // running on the day of the sale.
+    (function () {
+        var section = document.getElementById('discount-section');
+
+        if (!section) {
+            return;
+        }
+
+        var percent = document.getElementById('discount-percent');
+        var starts = document.getElementById('discount-starts');
+        var ends = document.getElementById('discount-ends');
+        var summary = document.getElementById('discount-summary');
+        var today = '@today.ToString("yyyy-MM-dd")';
+
+        function addDays(iso, days) {
+            var date = new Date(iso + 'T00:00:00');
+            date.setDate(date.getDate() + days);
+
+            return date.getFullYear()
+                + '-' + String(date.getMonth() + 1).padStart(2, '0')
+                + '-' + String(date.getDate()).padStart(2, '0');
+        }
+
+        function describe() {
+            var value = parseFloat(percent.value);
+
+            if (!value || value <= 0) {
+                summary.textContent = 'No discount — this product sells at its full price.';
+                return;
+            }
+
+            if (!starts.value || !ends.value) {
+                summary.textContent = 'Pick a start and an end date, or the discount will be rejected.';
+                return;
+            }
+
+            if (ends.value < starts.value) {
+                summary.textContent = 'The end date is before the start date.';
+                return;
+            }
+
+            var running = today >= starts.value && today <= ends.value;
+
+            summary.textContent = value + '% off from ' + starts.value + ' to ' + ends.value
+                + (running ? ' — running today.' : ' — not running today.');
+        }
+
+        section.querySelectorAll('.discount-preset').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var days = parseInt(button.getAttribute('data-days'), 10);
+
+                starts.value = today;
+                ends.value = addDays(today, days - 1);
+                describe();
+            });
+        });
+
+        document.getElementById('discount-clear').addEventListener('click', function () {
+            percent.value = '0';
+            starts.value = '';
+            ends.value = '';
+            describe();
+        });
+
+        [percent, starts, ends].forEach(function (field) {
+            field.addEventListener('input', describe);
+            field.addEventListener('change', describe);
+        });
+
+        describe();
+    })();
+</script>

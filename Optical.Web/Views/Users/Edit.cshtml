@@ -1,0 +1,83 @@
+@model Optical.Web.ViewModels.EditUserViewModel
+@{
+    ViewData["Title"] = $"Edit {Model.UserName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">@Model.UserName</h1>
+        <p class="app-brand-subtitle">Change the role, the name, or switch the account off</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-action="ResetPassword" asp-route-id="@Model.Id">Reset password</a>
+        <a class="btn btn-light border" asp-action="Index">Back to accounts</a>
+    </div>
+</div>
+
+<div class="app-card p-4" style="max-width:720px">
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="UserName" />
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        @if (Model.IsSelf)
+        {
+            <div class="alert alert-info" role="alert">
+                This is your own account. You cannot switch it off or take away your own Admin role.
+            </div>
+        }
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label">Username</label>
+                <input class="form-control" value="@Model.UserName" disabled />
+                <span class="stat-hint">The sign-in name cannot be changed.</span>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="FullName"></label>
+                <input class="form-control" asp-for="FullName" autocomplete="off" />
+                <span class="text-danger" asp-validation-for="FullName"></span>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Email">Email (optional)</label>
+                <input class="form-control" asp-for="Email" autocomplete="off" />
+                <span class="text-danger" asp-validation-for="Email"></span>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Role"></label>
+                <select class="form-select" asp-for="Role" asp-items="Model.Roles"></select>
+                <span class="text-danger" asp-validation-for="Role"></span>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    @if (Model.IsSelf)
+                    {
+                        <input class="form-check-input" type="checkbox" checked disabled />
+                    }
+                    else
+                    {
+                        <input class="form-check-input" type="checkbox" asp-for="IsActive" />
+                    }
+                    <label class="form-check-label" asp-for="IsActive"></label>
+                </div>
+                <span class="stat-hint">
+                    A disabled account keeps its history but can no longer sign in, and any open
+                    session stops working immediately.
+                </span>
+                @if (Model.IsSelf)
+                {
+                    <input type="hidden" asp-for="IsActive" value="true" />
+                }
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button class="btn btn-primary" type="submit">Save changes</button>
+            <a class="btn btn-light border" asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

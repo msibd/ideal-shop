@@ -1,0 +1,69 @@
+@model IReadOnlyList<Optical.Application.Features.Brands.BrandListItem>
+@{
+    ViewData["Title"] = "Brands";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Brands</h1>
+        <p class="app-brand-subtitle">Brands available for products</p>
+    </div>
+    <a class="action-btn action-solid-2 w-auto" asp-action="Create">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+        New Brand
+    </a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:320px" name="search" value="@ViewData["Search"]" placeholder="Search by name" />
+            <button class="btn btn-primary" type="submit">Search</button>
+            @if (!string.IsNullOrWhiteSpace(ViewData["Search"] as string))
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No brands found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var brand in Model)
+                    {
+                        <tr class="row-brand">
+                            <td class="cell-primary">@brand.Name</td>
+                            <td class="cell-secondary">@(string.IsNullOrWhiteSpace(brand.Description) ? "—" : brand.Description)</td>
+                            <td>
+                                <span class="chip @(brand.IsActive ? "chip-active" : "chip-inactive")">
+                                    @(brand.IsActive ? "ACTIVE" : "INACTIVE")
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@brand.Id">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

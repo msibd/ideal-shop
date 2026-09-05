@@ -1,0 +1,79 @@
+@model Optical.Web.ViewModels.ShopSettingsViewModel
+@{
+    ViewData["Title"] = "System Settings";
+    var isConfigured = ViewData["IsConfigured"] is true;
+}
+
+<div class="mb-3">
+    <h1 class="app-brand-title">System Settings</h1>
+    <p class="app-brand-subtitle">Business details used across the application</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Business Details</h2>
+                <span class="chip @(isConfigured ? "chip-active" : "chip-inactive")">
+                    @(isConfigured ? "CONFIGURED" : "NOT SET UP")
+                </span>
+            </div>
+
+            <div class="p-4">
+                <form asp-action="Index" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="BusinessName" class="form-label fw-semibold"></label>
+                        <input asp-for="BusinessName" class="form-control" autofocus
+                               placeholder="e.g. Vision Care Optical" />
+                        <span asp-validation-for="BusinessName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label fw-semibold"></label>
+                        <input asp-for="Phone" class="form-control" placeholder="e.g. 01712-345678" />
+                        <span class="text-secondary small">Printed on every receipt, under the business name.</span>
+                        <span asp-validation-for="Phone" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Address" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Address" class="form-control" rows="4"
+                                  placeholder="Street, area, city, postcode"></textarea>
+                        <span asp-validation-for="Address" class="text-danger small"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4">
+                        @(isConfigured ? "Save changes" : "Save business details")
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">About these settings</h2>
+            </div>
+            <div class="p-4">
+                <p class="stat-hint mb-3">
+                    These details identify the shop. They are stored once and shared by the whole
+                    application — receipts and printed documents will use them.
+                </p>
+                <p class="stat-hint mb-0 d-flex align-items-start gap-2">
+                    <span class="d-inline-flex pt-1"><partial name="_InfoIcon" /></span>
+                    <span>
+                        Only an administrator (the shop owner) can view or change this page.
+                        Cashiers do not see it in the menu and are refused access if they open the URL directly.
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,132 @@
+@using Optical.Web.Printing
+@model Optical.Application.Features.Products.ProductDetails
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="app-brand-title">@Model.Name</h1>
+        <p class="app-brand-subtitle">SKU @Model.Sku</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="Index">Back to list</a>
+        <a class="action-btn action-solid-1 w-auto" asp-action="Edit" asp-route-id="@Model.Id">Edit</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Product details</h2>
+                <span class="chip @(Model.IsActive ? "chip-active" : "chip-inactive")">
+                    @(Model.IsActive ? "ACTIVE" : "INACTIVE")
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table app-table">
+                    <tbody>
+                        <tr>
+                            <td class="cell-secondary" style="width:40%">SKU</td>
+                            <td class="cell-primary">@Model.Sku</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Barcode</td>
+                            <td class="cell-primary">
+                                @if (string.IsNullOrWhiteSpace(Model.Barcode))
+                                {
+                                    <span class="cell-secondary">Not set</span>
+                                }
+                                else
+                                {
+                                    @Model.Barcode
+                                    @if (Code39.Svg(Model.Barcode, moduleWidth: 2, height: 36) is { } barcode)
+                                    {
+                                        <span class="d-block mt-1">@barcode</span>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Name</td>
+                            <td class="cell-primary">@Model.Name</td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Category</td>
+                            <td><span class="chip chip-category">@Model.CategoryName.ToUpperInvariant()</span></td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Brand</td>
+                            <td><span class="chip chip-brand">@Model.BrandName.ToUpperInvariant()</span></td>
+                        </tr>
+                        <tr>
+                            <td class="cell-secondary">Reorder level</td>
+                            <td class="cell-primary money">@Model.ReorderLevel</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="app-card mb-3">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Pricing</h2>
+            </div>
+            <div class="p-3 d-flex gap-3">
+                <div class="flex-fill">
+                    <div class="stat-label">Purchase price</div>
+                    <div class="stat-value sm money">@Model.PurchasePrice.ToString("N2")</div>
+                </div>
+                <div class="flex-fill">
+                    <div class="stat-label">Sale price</div>
+                    <div class="stat-value sm money">@Model.SalePrice.ToString("N2")</div>
+                </div>
+                <div class="flex-fill">
+                    <div class="stat-label">Discount</div>
+                    @if (Model.IsDiscountRunning)
+                    {
+                        <div class="stat-value sm money">@Model.DiscountedPrice.ToString("N2")</div>
+                        <span class="badge bg-success">@Model.DiscountPercent.ToString("0.##")% off</span>
+                        <div class="stat-hint mt-1">
+                            Until @Model.DiscountEndsOn!.Value.ToString("dd/MM/yyyy")
+                        </div>
+                    }
+                    else if (Model.HasDiscount)
+                    {
+                        <span class="badge bg-secondary">@Model.DiscountPercent.ToString("0.##")% not running</span>
+                        <div class="stat-hint mt-1">
+                            @Model.DiscountStartsOn!.Value.ToString("dd/MM/yyyy") &ndash; @Model.DiscountEndsOn!.Value.ToString("dd/MM/yyyy")
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="stat-value sm">&mdash;</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Record</h2>
+            </div>
+            <div class="p-3">
+                <div class="meta-line strong mb-1">
+                    Created @Model.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </div>
+                <div class="meta-line">
+                    @(Model.UpdatedAt is null
+                        ? "Never updated"
+                        : $"Updated {Model.UpdatedAt.Value.ToLocalTime():dd/MM/yyyy HH:mm}")
+                </div>
+                <p class="stat-hint mt-3 mb-0 d-flex align-items-start gap-2">
+                    <span class="d-inline-flex pt-1"><partial name="_InfoIcon" /></span>
+                    <span>Stock quantity is not held on the product — it arrives with Inventory.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,20 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<div class="app-card p-4 text-center mx-auto" style="max-width:520px">
+    <h1 class="app-brand-title">Something went wrong</h1>
+    <p class="app-brand-subtitle">
+        The request could not be completed. Nothing was saved, so it is safe to try again.
+    </p>
+
+    @if (Model.ShowRequestId)
+    {
+        <p class="stat-hint mb-3">
+            Reference: <code>@Model.RequestId</code>
+        </p>
+    }
+
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+</div>

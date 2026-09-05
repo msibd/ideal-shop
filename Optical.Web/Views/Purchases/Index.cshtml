@@ -1,0 +1,96 @@
+@model Optical.Application.Features.Purchases.PurchaseListResult
+@{
+    ViewData["Title"] = "Purchases";
+    var search = ViewData["Search"] as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Purchases</h1>
+        <p class="app-brand-subtitle">@Model.TotalCount purchase(s) recorded</p>
+    </div>
+    <a class="action-btn action-solid-1 w-auto" asp-action="Create">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+        New Purchase
+    </a>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-grow-1" asp-action="Index" method="get">
+            <input class="form-control" style="max-width:340px" name="search" value="@search"
+                   placeholder="Search by supplier or invoice" />
+            <button class="btn btn-primary" type="submit">Search</button>
+            @if (!string.IsNullOrWhiteSpace(search))
+            {
+                <a class="btn btn-link text-decoration-none" asp-action="Index">Clear</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No purchases found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Supplier</th>
+                        <th scope="col">Invoice</th>
+                        <th scope="col" class="text-end">Lines</th>
+                        <th scope="col" class="text-end">Units</th>
+                        <th scope="col" class="text-end">Total</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var purchase in Model.Items)
+                    {
+                        <tr class="row-brand">
+                            <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@purchase.Id</td>
+                            <td class="cell-primary">@purchase.PurchaseDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <span class="chip chip-brand">@purchase.SupplierName.ToUpperInvariant()</span>
+                            </td>
+                            <td class="cell-secondary">@(purchase.InvoiceNumber ?? "—")</td>
+                            <td class="text-end money">@purchase.LineCount</td>
+                            <td class="text-end money">@purchase.TotalQuantity</td>
+                            <td class="text-end money fw-semibold">@purchase.TotalAmount.ToString("N2")</td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@purchase.Id">Details</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="app-card-header border-top border-bottom-0">
+                <span class="stat-hint">Page @Model.Page of @Model.TotalPages — @Model.TotalCount purchase(s)</span>
+                <span class="d-flex gap-2">
+                    @if (Model.HasPrevious)
+                    {
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="Index" asp-route-search="@search" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    }
+                    @if (Model.HasNext)
+                    {
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-action="Index" asp-route-search="@search" asp-route-page="@(Model.Page + 1)">Next</a>
+                    }
+                </span>
+            </div>
+        }
+    }
+</div>

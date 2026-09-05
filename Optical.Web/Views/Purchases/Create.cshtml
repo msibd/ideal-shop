@@ -1,0 +1,196 @@
+@model Optical.Web.ViewModels.PurchaseFormViewModel
+@{
+    ViewData["Title"] = "New purchase";
+}
+
+<h1 class="app-brand-title mb-3">New purchase</h1>
+
+@if (Model.Suppliers.Any() == false || Model.Products.Count == 0)
+{
+    <div class="alert alert-warning">
+        A purchase needs at least one active supplier and one active product.
+        <a asp-controller="Suppliers" asp-action="Create">Add a supplier</a> or
+        <a asp-controller="Products" asp-action="Create">add a product</a> first.
+    </div>
+}
+
+<form asp-action="Create" method="post" id="purchase-form">
+    <div asp-validation-summary="All" class="alert alert-danger py-2 small" role="alert"></div>
+
+    <div class="app-card p-4 mb-3">
+        <div class="row g-3">
+            <div class="col-12 col-md-5">
+                <label asp-for="SupplierId" class="form-label fw-semibold"></label>
+                <select asp-for="SupplierId" asp-items="Model.Suppliers" class="form-select">
+                    <option value="">— Select a supplier —</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label asp-for="PurchaseDate" class="form-label fw-semibold"></label>
+                <input asp-for="PurchaseDate" class="form-control" type="date" />
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label asp-for="InvoiceNumber" class="form-label fw-semibold"></label>
+                <input asp-for="InvoiceNumber" class="form-control" placeholder="Optional" />
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card mb-3">
+        <div class="app-card-header">
+            <span class="app-card-title">Items</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="add-line">Add line</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table app-table mb-0" id="lines-table">
+                <thead>
+                    <tr>
+                        <th scope="col" style="min-width:260px">Product</th>
+                        <th scope="col" class="text-end" style="width:130px">Quantity</th>
+                        <th scope="col" class="text-end" style="width:160px">Unit cost</th>
+                        <th scope="col" class="text-end" style="width:150px">Line total</th>
+                        <th scope="col" class="text-end" style="width:90px"></th>
+                    </tr>
+                </thead>
+                <tbody id="lines">
+                    @for (var i = 0; i < Model.Items.Count; i++)
+                    {
+                        var line = Model.Items[i];
+                        <tr class="purchase-line">
+                            <td>
+                                <select name="Items[@i].ProductId" class="form-select line-product">
+                                    <option value="">— Select a product —</option>
+                                    @foreach (var product in Model.Products)
+                                    {
+                                        <option value="@product.Id" data-price="@product.PurchasePrice.ToString("0.00")"
+                                                selected="@(line.ProductId == product.Id)">
+                                            @product.Sku — @product.Name
+                                        </option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <input name="Items[@i].Quantity" value="@line.Quantity" type="number" min="1" step="1"
+                                       class="form-control money text-end line-qty" />
+                            </td>
+                            <td>
+                                <input name="Items[@i].PurchasePrice" value="@line.PurchasePrice.ToString("0.00")"
+                                       type="number" min="0" step="0.01"
+                                       class="form-control money text-end line-price" />
+                            </td>
+                            <td class="text-end money line-total">0.00</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary remove-line">Remove</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end fw-semibold">Total</td>
+                        <td class="text-end money fw-semibold" id="grand-total">0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary px-4">Save purchase</button>
+        <a class="btn btn-light border" asp-action="Index">Cancel</a>
+    </div>
+    <p class="stat-hint mt-2">Saving increases stock for every product on this purchase.</p>
+</form>
+
+<template id="line-template">
+    <tr class="purchase-line">
+        <td>
+            <select name="Items[__index__].ProductId" class="form-select line-product">
+                <option value="">— Select a product —</option>
+                @foreach (var product in Model.Products)
+                {
+                    <option value="@product.Id" data-price="@product.PurchasePrice.ToString("0.00")">
+                        @product.Sku — @product.Name
+                    </option>
+                }
+            </select>
+        </td>
+        <td>
+            <input name="Items[__index__].Quantity" value="1" type="number" min="1" step="1"
+                   class="form-control money text-end line-qty" />
+        </td>
+        <td>
+            <input name="Items[__index__].PurchasePrice" value="0.00" type="number" min="0" step="0.01"
+                   class="form-control money text-end line-price" />
+        </td>
+        <td class="text-end money line-total">0.00</td>
+        <td class="text-end">
+            <button type="button" class="btn btn-sm btn-outline-primary remove-line">Remove</button>
+        </td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Cart-style editing only. The server recalculates every price and total on save.
+        $(function () {
+            var lines = $('#lines');
+
+            function reindex() {
+                lines.find('tr.purchase-line').each(function (index) {
+                    $(this).find('[name]').each(function () {
+                        var name = $(this).attr('name').replace(/Items\[\d+\]/, 'Items[' + index + ']');
+                        $(this).attr('name', name);
+                    });
+                });
+            }
+
+            function recalculate() {
+                var total = 0;
+
+                lines.find('tr.purchase-line').each(function () {
+                    var row = $(this);
+                    var quantity = parseInt(row.find('.line-qty').val(), 10) || 0;
+                    var price = parseFloat(row.find('.line-price').val()) || 0;
+                    var lineTotal = quantity * price;
+
+                    total += lineTotal;
+                    row.find('.line-total').text(lineTotal.toFixed(2));
+                });
+
+                $('#grand-total').text(total.toFixed(2));
+            }
+
+            $('#add-line').on('click', function () {
+                var markup = $('#line-template').html().replace(/__index__/g, lines.find('tr.purchase-line').length);
+                lines.append(markup);
+                recalculate();
+            });
+
+            lines.on('click', '.remove-line', function () {
+                $(this).closest('tr').remove();
+                reindex();
+                recalculate();
+            });
+
+            lines.on('change', '.line-product', function () {
+                var price = $(this).find('option:selected').data('price');
+
+                if (price !== undefined) {
+                    $(this).closest('tr').find('.line-price').val(price);
+                }
+
+                recalculate();
+            });
+
+            lines.on('input', '.line-qty, .line-price', recalculate);
+
+            recalculate();
+        });
+    </script>
+}

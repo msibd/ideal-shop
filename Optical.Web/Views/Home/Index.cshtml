@@ -1,0 +1,385 @@
+@model Optical.Application.Features.Dashboard.DashboardSummary
+@using Optical.Web.ViewModels
+@using Optical.Application.Features.Dashboard
+@{
+    ViewData["Title"] = "Dashboard";
+
+    string Money(decimal amount) => "৳" + amount.ToString("N0");
+
+    string Share(decimal part, decimal whole) =>
+        whole == 0 ? "0%" : (part / whole * 100m).ToString("0.#") + "%";
+
+    var status = Model.StockStatus;
+
+    var stockDonut = new DonutViewModel
+    {
+        CenterValue = status.Total.ToString("N0"),
+        CenterLabel = "Total Products",
+        Description = $"Stock status: {status.InStock} in stock, {status.LowStock} low, {status.OutOfStock} out of stock.",
+        EmptyMessage = "No products yet.",
+        Slices =
+        [
+            new DonutSlice("In Stock", status.InStock,
+                $"{status.InStock} ({Share(status.InStock, status.Total)})", "--status-good", "good"),
+            new DonutSlice("Low Stock", status.LowStock,
+                $"{status.LowStock} ({Share(status.LowStock, status.Total)})", "--status-warning", "warning"),
+            new DonutSlice("Out of Stock", status.OutOfStock,
+                $"{status.OutOfStock} ({Share(status.OutOfStock, status.Total)})", "--status-critical", "critical")
+        ]
+    };
+
+    // Slots are handed out by the category's position in a stable, value-ordered
+    // list built on the server; the fifth and beyond are already folded into "Other".
+    var slots = new[] { "--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-other" };
+
+    var categoryDonut = new DonutViewModel
+    {
+        CenterValue = Money(Model.StockValue),
+        CenterLabel = "Total Value",
+        Description = "Stock value split by product category.",
+        EmptyMessage = "No stock on hand yet.",
+        Slices = Model.StockValueByCategory
+            .Select((c, index) => new DonutSlice(
+                c.CategoryName,
+                c.Value,
+                $"{Money(c.Value)} ({Share(c.Value, Model.StockValue)})",
+                slots[Math.Min(index, slots.Length - 1)]))
+            .ToList()
+    };
+}
+
+@{
+    var presets = new (DashboardRangeKind Kind, string Text)[]
+    {
+        (DashboardRangeKind.Today, "Today"),
+        (DashboardRangeKind.Last7Days, "7 Days"),
+        (DashboardRangeKind.Last30Days, "30 Days"),
+        (DashboardRangeKind.ThisMonth, "This Month"),
+        (DashboardRangeKind.ThisYear, "This Year")
+    };
+
+    var isCustom = Model.Range.Kind == DashboardRangeKind.Custom;
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+        <h1 class="app-brand-title">Dashboard</h1>
+        <p class="app-brand-subtitle mb-0" id="range-label">@Model.Range.Label</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap" id="range-filter"
+         data-stats-url="@Url.Action("Stats")">
+        <span class="stat-hint">Filter:</span>
+        @foreach (var preset in presets)
+        {
+            <a class="btn btn-sm range-preset @(Model.Range.Kind == preset.Kind ? "btn-primary" : "btn-outline-primary")"
+               asp-action="Index" asp-route-range="@preset.Kind">@preset.Text</a>
+        }
+        <button class="btn btn-sm range-custom-toggle @(isCustom ? "btn-primary" : "btn-outline-primary")" type="button"
+                data-bs-toggle="collapse" data-bs-target="#custom-range"
+                aria-expanded="@(isCustom ? "true" : "false")" aria-controls="custom-range">
+            Custom Range
+        </button>
+    </div>
+</div>
+
+<div class="collapse @(isCustom ? "show" : "")" id="custom-range">
+    <div class="app-card p-3 mb-3">
+        <form class="row g-2 align-items-end" id="custom-range-form" asp-action="Index" method="get">
+            <input type="hidden" name="range" value="@DashboardRangeKind.Custom" />
+
+            <div class="col-12 col-sm-auto">
+                <label class="form-label fw-semibold" for="range-from">From</label>
+                <input class="form-control" type="date" id="range-from" name="from"
+                       value="@Model.Range.From.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-12 col-sm-auto">
+                <label class="form-label fw-semibold" for="range-to">To</label>
+                <input class="form-control" type="date" id="range-to" name="to"
+                       value="@Model.Range.To.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-12 col-sm-auto">
+                <button class="btn btn-primary px-4" type="submit">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<partial name="_DashboardStats" model="Model" />
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-xl-4">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Stock Status Overview</h2>
+                <span class="d-flex align-items-center gap-2">
+                    <a class="text-decoration-none fw-semibold" asp-controller="Inventory" asp-action="Index">View All</a>
+                    <partial name="_CollapseToggle" model="@("stock-status")" />
+                </span>
+            </div>
+
+            <div class="collapse show" id="stock-status">
+                <partial name="_Donut" model="stockDonut" />
+
+                @if (status.Total > 0)
+                {
+                    <div class="stock-note">
+                        <partial name="_InfoIcon" />
+                        @Share(status.InStock, status.Total) of products are in good stock
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Low Stock Alerts</h2>
+                <span class="d-flex align-items-center gap-2">
+                    <a class="text-decoration-none fw-semibold"
+                       asp-controller="Inventory" asp-action="Index" asp-route-lowStockOnly="true">View All</a>
+                    <partial name="_CollapseToggle" model="@("low-stock-alerts")" />
+                </span>
+            </div>
+
+            <div class="collapse show" id="low-stock-alerts">
+
+            @if (Model.LowStockAlerts.Count == 0)
+            {
+                <div class="p-4 text-center stat-hint">Nothing has reached its reorder level.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <caption class="visually-hidden">
+                            Products at or below their reorder level, scarcest first.
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Current Stock</th>
+                                <th scope="col" class="text-end">Reorder Level</th>
+                                <th scope="col" class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var alert in Model.LowStockAlerts)
+                            {
+                                <tr class="row-category">
+                                    <td>
+                                        <div class="cell-primary">@alert.Name</div>
+                                        <div class="cell-secondary">SKU: @alert.Sku</div>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="chip chip-inactive">@alert.Quantity</span>
+                                    </td>
+                                    <td class="text-end money">@alert.ReorderLevel</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           asp-controller="Inventory" asp-action="Adjust" asp-route-id="@alert.ProductId">Adjust</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-4">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Stock Value by Category</h2>
+                <span class="d-flex align-items-center gap-2">
+                    <a class="text-decoration-none fw-semibold" asp-controller="Inventory" asp-action="Index">View All</a>
+                    <partial name="_CollapseToggle" model="@("stock-by-category")" />
+                </span>
+            </div>
+
+            <div class="collapse show" id="stock-by-category">
+                <partial name="_Donut" model="categoryDonut" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+        <div class="app-card h-100">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Recent Activities</h2>
+                <span class="d-flex align-items-center gap-2">
+                    <a class="text-decoration-none fw-semibold" asp-controller="Sales" asp-action="Index">View All</a>
+                    <partial name="_CollapseToggle" model="@("recent-activities")" />
+                </span>
+            </div>
+
+            <div class="collapse show" id="recent-activities">
+
+            @if (Model.RecentActivities.Count == 0)
+            {
+                <div class="p-4 text-center stat-hint">
+                    Nothing has happened yet. Ring up a sale or record a purchase to get started.
+                </div>
+            }
+            else
+            {
+                <ul class="activity-list">
+                    @foreach (var activity in Model.RecentActivities)
+                    {
+                        var at = activity.At.ToLocalTime();
+                        var iconClass = activity.Kind switch
+                        {
+                            "Sale" => "stat-icon good activity-icon",
+                            "Purchase" => "stat-icon cat-3 activity-icon",
+                            "Supplier" => "stat-icon cat-2 activity-icon",
+                            _ => "stat-icon cat-1 activity-icon"
+                        };
+
+                        <li>
+                            <span class="@iconClass">
+                                @switch (activity.Kind)
+                                {
+                                    case "Sale":
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <line x1="12" y1="1" x2="12" y2="23" />
+                                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                        </svg>
+                                        break;
+                                    case "Purchase":
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                                            <line x1="3" y1="6" x2="21" y2="6" />
+                                            <path d="M16 10a4 4 0 0 1-8 0" />
+                                        </svg>
+                                        break;
+                                    case "Supplier":
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="1" y="3" width="15" height="13" rx="1" />
+                                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                            <circle cx="5.5" cy="18.5" r="2.5" />
+                                            <circle cx="18.5" cy="18.5" r="2.5" />
+                                        </svg>
+                                        break;
+                                    default:
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                        </svg>
+                                        break;
+                                }
+                            </span>
+                            <span>
+                                <span class="activity-title d-block">@activity.Title</span>
+                                <span class="activity-detail">@activity.Detail</span>
+                            </span>
+                            <time class="activity-time" datetime="@at.ToString("o")">
+                                @(at.Date == DateTime.Today ? at.ToString("hh:mm tt") : at.ToString("dd MMM"))
+                            </time>
+                        </li>
+                    }
+                </ul>
+            }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // The period filter swaps only the stat cards. Everything below them describes
+        // stock right now, not the period, so a full page reload would be wasted work.
+        $(function () {
+            var filter = $('#range-filter');
+            var statsUrl = filter.data('stats-url');
+            var pending = null;
+            var requestId = 0;
+
+            function markActive(kind) {
+                filter.find('.range-preset').each(function () {
+                    var link = $(this);
+                    var active = link.attr('href').indexOf('range=' + kind) > -1;
+
+                    link.toggleClass('btn-primary', active).toggleClass('btn-outline-primary', !active);
+                });
+
+                var custom = kind === 'Custom';
+                filter.find('.range-custom-toggle')
+                    .toggleClass('btn-primary', custom)
+                    .toggleClass('btn-outline-primary', !custom);
+            }
+
+            function load(query, pageUrl, push) {
+                // A slow earlier request must never overwrite a newer one.
+                var id = ++requestId;
+
+                if (pending) {
+                    pending.abort();
+                }
+
+                $('#dashboard-stats').addClass('is-loading');
+
+                pending = $.get(statsUrl, query)
+                    .done(function (html) {
+                        if (id !== requestId) {
+                            return;
+                        }
+
+                        var replacement = $(html);
+
+                        $('#dashboard-stats').replaceWith(replacement);
+                        $('#range-label').text(replacement.data('range-label'));
+                        markActive(String(replacement.data('range-kind')));
+
+                        if (push) {
+                            history.pushState({ dashboard: query }, '', pageUrl);
+                        }
+                    })
+                    .fail(function (xhr, status) {
+                        if (id !== requestId || status === 'abort') {
+                            return;
+                        }
+
+                        // Falling back to a normal navigation is better than a stale dashboard.
+                        window.location.href = pageUrl;
+                    })
+                    .always(function () {
+                        $('#dashboard-stats').removeClass('is-loading');
+                    });
+            }
+
+            filter.on('click', '.range-preset', function (event) {
+                event.preventDefault();
+
+                var href = $(this).attr('href');
+                var kind = href.split('range=')[1];
+
+                load({ range: kind }, href, true);
+            });
+
+            $('#custom-range-form').on('submit', function (event) {
+                event.preventDefault();
+
+                var form = $(this);
+                var query = form.serialize();
+
+                load(query, form.attr('action') + '?' + query, true);
+            });
+
+            // Back and forward should move between periods, not out of the dashboard.
+            $(window).on('popstate', function (event) {
+                var state = event.originalEvent.state;
+
+                if (state && state.dashboard) {
+                    load(state.dashboard, window.location.href, false);
+                }
+            });
+        });
+    </script>
+}

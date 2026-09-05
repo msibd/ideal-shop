@@ -1,0 +1,15 @@
+.vs/
+.git/
+.gitignore
+
+**/bin/
+**/obj/
+
+Optical.Tests/
+
+docs/
+
+CLAUDE.md
+ReadFirst.md
+
+appsettings.Development.json

@@ -1,0 +1,98 @@
+@using Optical.Domain.Enums
+@model Optical.Application.Features.Reports.SalesReportResult
+@{
+    ViewData["Title"] = "Sales Report";
+
+    string MethodName(PaymentMethod method) =>
+        method == PaymentMethod.MobileBanking ? "Mobile Banking" : method.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">Sales Report</h1>
+        <p class="app-brand-subtitle">
+            @Model.Period.From.ToString("dd MMM yyyy") — @Model.Period.To.ToString("dd MMM yyyy") · completed sales only
+        </p>
+    </div>
+    <a class="btn btn-light border" asp-action="Inventory">Inventory report</a>
+</div>
+
+<div class="app-card mb-3">
+    <div class="app-card-header">
+        <form class="d-flex gap-2 flex-wrap align-items-center" asp-action="Sales" method="get">
+            <input class="form-control" style="max-width:180px" type="date" name="from"
+                   value="@Model.Period.From.ToString("yyyy-MM-dd")" aria-label="From date" />
+            <input class="form-control" style="max-width:180px" type="date" name="to"
+                   value="@Model.Period.To.ToString("yyyy-MM-dd")" aria-label="To date" />
+            <button class="btn btn-primary" type="submit">Apply</button>
+            <a class="btn btn-link text-decoration-none" asp-action="Sales">Last 30 days</a>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Total sales</p>
+            <p class="stat-value mb-0">@Model.TotalAmount.ToString("N2")</p>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Number of sales</p>
+            <p class="stat-value mb-0">@Model.SaleCount</p>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Average sale</p>
+            <p class="stat-value mb-0">@Model.AverageSale.ToString("N2")</p>
+        </div>
+    </div>
+</div>
+
+<div class="app-card">
+    <div class="app-card-header">
+        <span class="app-card-title">By payment method</span>
+    </div>
+
+    @if (Model.Payments.Count == 0)
+    {
+        <div class="p-4 text-center stat-hint">No sales in this period.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table app-table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Method</th>
+                        <th scope="col" class="text-end">Sales</th>
+                        <th scope="col" class="text-end">Amount</th>
+                        <th scope="col" class="text-end">Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in Model.Payments)
+                    {
+                        var share = Model.TotalAmount == 0 ? 0m : payment.Amount / Model.TotalAmount * 100;
+                        <tr class="row-category">
+                            <td class="cell-primary">@MethodName(payment.Method)</td>
+                            <td class="text-end money">@payment.Count</td>
+                            <td class="text-end money">@payment.Amount.ToString("N2")</td>
+                            <td class="text-end money">@share.ToString("N1")%</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td class="fw-semibold">Total</td>
+                        <td class="text-end money fw-semibold">@Model.Payments.Sum(p => p.Count)</td>
+                        <td class="text-end money fw-semibold">@Model.Payments.Sum(p => p.Amount).ToString("N2")</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>

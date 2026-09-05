@@ -1,0 +1,83 @@
+@using System.Globalization
+@model Optical.Web.ViewModels.DonutViewModel
+@{
+    // Geometry. Segments are separated by a 2px gap of surface so adjacent
+    // fills never touch, which is what keeps close hues readable.
+    const double radius = 70;
+    const double strokeWidth = 22;
+    const double gap = 2;
+
+    var circumference = 2 * Math.PI * radius;
+    var total = Model.Slices.Sum(s => s.Value);
+    var offset = 0d;
+
+    string Svg(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+}
+
+<div class="donut-figure">
+    <svg class="donut" viewBox="0 0 180 180" width="180" height="180" role="img"
+         aria-label="@Model.Description">
+        <g transform="rotate(-90 90 90)">
+            <circle class="donut-track" cx="90" cy="90" r="@Svg(radius)" stroke-width="@Svg(strokeWidth)" />
+
+            @if (total > 0)
+            {
+                @foreach (var slice in Model.Slices)
+                {
+                    var share = (double)(slice.Value / total);
+                    var length = Math.Max(share * circumference - gap, 0);
+                    var start = offset;
+                    offset += share * circumference;
+
+                    <circle class="donut-segment" cx="90" cy="90" r="@Svg(radius)"
+                            stroke="var(@slice.Colour)" stroke-width="@Svg(strokeWidth)"
+                            stroke-dasharray="@Svg(length) @Svg(circumference - length)"
+                            stroke-dashoffset="@Svg(-start)" />
+                }
+            }
+        </g>
+        <text x="90" y="88" text-anchor="middle" class="donut-center-value">@Model.CenterValue</text>
+        <text x="90" y="106" text-anchor="middle" class="donut-center-label">@Model.CenterLabel</text>
+    </svg>
+</div>
+
+@if (total <= 0)
+{
+    <p class="stat-hint text-center pb-4 mb-0">@Model.EmptyMessage</p>
+}
+else
+{
+    <ul class="chart-legend">
+        @foreach (var slice in Model.Slices)
+        {
+            <li>
+                <span class="legend-swatch" style="background: var(@slice.Colour)"></span>
+
+                @switch (slice.Status)
+                {
+                    case "good":
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--status-good-ink)">
+                            <path d="m5 12 5 5L20 7" />
+                        </svg>
+                        break;
+                    case "warning":
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--status-warning-ink)">
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        break;
+                    case "critical":
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--status-critical-ink)">
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                        </svg>
+                        break;
+                }
+
+                <span class="legend-name">@slice.Label</span>
+                <span class="legend-value">@slice.Display</span>
+            </li>
+        }
+    </ul>
+}

@@ -1,0 +1,124 @@
+@using Optical.Application.Common
+@using Optical.Domain.Enums
+@model Optical.Application.Features.Sales.SaleDetails
+@inject Optical.Application.Features.Permissions.RolePermissionStore Permissions
+@{
+    ViewData["Title"] = $"Sale {Model.InvoiceNumber}";
+
+    // Follows the same permission the Exchanges pages do, so the button is never offered
+    // to someone the next screen would refuse.
+    var canExchange = await Permissions.IsGrantedAsync(
+        User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value),
+        AppPermissions.Exchanges,
+        Context.RequestAborted);
+    var paymentLabel = Model.PaymentMethod is null
+        ? "—"
+        : Model.PaymentMethod == PaymentMethod.MobileBanking ? "Mobile Banking" : Model.PaymentMethod.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="app-brand-title">@Model.InvoiceNumber</h1>
+        <p class="app-brand-subtitle">@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm") — @(Model.CustomerName ?? "Walk-in")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="Receipt" asp-route-id="@Model.Id" target="_blank">Print receipt</a>
+        @if (canExchange && Model.Status == SaleStatus.Completed)
+        {
+            <a class="btn btn-outline-danger" asp-controller="Exchanges" asp-action="Create" asp-route-saleId="@Model.Id">
+                Exchange items
+            </a>
+        }
+        <a class="btn btn-light border" asp-action="Index">Back to sales</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="app-card p-4">
+            <p class="stat-label">Customer</p>
+            <p class="stat-value mb-3">@(Model.CustomerName ?? "Walk-in")</p>
+
+            <p class="stat-label">Phone</p>
+            <p class="meta-line mb-3">@(Model.CustomerPhone ?? "—")</p>
+
+            <p class="stat-label">Payment method</p>
+            <p class="meta-line mb-3">@paymentLabel</p>
+
+            <p class="stat-label">Paid</p>
+            <p class="meta-line mb-3">@(Model.PaidAmount?.ToString("N2") ?? "—")</p>
+
+            <p class="stat-label">Status</p>
+            <p class="meta-line mb-3">
+                <span class="badge @(Model.Status == SaleStatus.Completed ? "text-bg-success" : "text-bg-secondary")">@Model.Status</span>
+            </p>
+
+            <p class="stat-label">Sold at</p>
+            <p class="meta-line mb-0">@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="app-card">
+            <div class="app-card-header">
+                <span class="app-card-title">Items</span>
+                <span class="stat-hint">@Model.Items.Count line(s) — @Model.TotalQuantity unit(s)</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table app-table mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">SKU</th>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">Quantity</th>
+                            <th scope="col" class="text-end">Unit price</th>
+                            <th scope="col" class="text-end">Discount</th>
+                            <th scope="col" class="text-end">Line total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr class="row-category">
+                                <td class="cell-secondary" style="font-variant-numeric: tabular-nums">@item.Sku</td>
+                                <td class="cell-primary">@item.ProductName</td>
+                                <td class="text-end money">@item.Quantity</td>
+                                <td class="text-end money">@item.UnitPrice.ToString("N2")</td>
+                                <td class="text-end money">
+                                    @if (item.DiscountAmount > 0)
+                                    {
+                                        <span>-@item.DiscountAmount.ToString("N2")</span>
+                                        <span class="cell-secondary d-block">@item.DiscountPercent.ToString("0.##")%</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td class="text-end money">@item.LineTotal.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        @if (Model.HasDiscount)
+                        {
+                            <tr>
+                                <td colspan="5" class="text-end">Subtotal</td>
+                                <td class="text-end money">@Model.SubTotal.ToString("N2")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="5" class="text-end">Discount</td>
+                                <td class="text-end money">-@Model.DiscountAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td colspan="5" class="text-end fw-semibold">Total</td>
+                            <td class="text-end money fw-semibold">@Model.TotalAmount.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,260 @@
+@using Optical.Application.Features.POS
+@using Optical.Domain.Enums
+@using Optical.Web.Printing
+@model Optical.Web.ViewModels.ReceiptViewModel
+@{
+    // Stands alone so nothing from the application chrome ends up on the paper.
+    Layout = null;
+
+    var sale = Model.Sale;
+    var barcode = Code39.Svg(InvoiceNumber.ScanCode(sale.InvoiceNumber));
+
+    var paymentLabel = sale.PaymentMethod is null
+        ? "—"
+        : sale.PaymentMethod == PaymentMethod.MobileBanking ? "Mobile Banking" : sale.PaymentMethod.ToString();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(Model.IsA4 ? "Invoice" : "Receipt") @sale.InvoiceNumber</title>
+    <style>
+        @if (Model.IsA4)
+        {
+            @:@@page { size: A4; margin: 14mm; }
+        }
+        else
+        {
+            @:@@page { size: 80mm auto; margin: 0; }
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            background: #f1f3f5;
+            font-family: "Segoe UI", Arial, sans-serif;
+            font-size: 13px;
+            color: #111;
+        }
+
+        .receipt {
+            width: 80mm;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .shop-name {
+            margin: 0;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .shop-address, .meta {
+            margin: 4px 0 0;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px dashed #999;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 3px 0;
+            font-size: 12px;
+            vertical-align: top;
+        }
+
+        th {
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .total-row td {
+            border-top: 1px solid #333;
+            font-weight: 700;
+            font-size: 14px;
+            padding-top: 6px;
+        }
+
+        .footer {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .barcode {
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .barcode svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+
+        .actions {
+            width: 80mm;
+            max-width: 100%;
+            margin: 12px auto 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .actions a, .actions button {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 13px;
+            text-align: center;
+            text-decoration: none;
+            color: #111;
+            cursor: pointer;
+        }
+
+        /* A4: a full sheet, so the type can breathe and the table can rule its rows. */
+        body.a4 { font-size: 15px; }
+        body.a4 .receipt { width: 190mm; padding: 0; }
+        body.a4 .shop-name { font-size: 30px; }
+        body.a4 .shop-address, body.a4 .meta { font-size: 14px; }
+        body.a4 th, body.a4 td { padding: 8px 6px; font-size: 14px; }
+        body.a4 td { border-bottom: 1px solid #e3e3e3; }
+        body.a4 .total-row td { font-size: 18px; padding-top: 10px; }
+        body.a4 hr { border-top-color: #ccc; }
+        body.a4 .footer { margin-top: 24px; font-size: 14px; }
+        body.a4 .barcode { margin-top: 24px; }
+        body.a4 .actions { width: 190mm; }
+
+        @@media print {
+            body { background: #fff; padding: 0; }
+            .receipt { width: auto; padding: 0; }
+            .actions { display: none; }
+
+            /* The sheet keeps its width in print; only the roll is left to the driver. */
+            body.a4 .receipt { width: auto; }
+        }
+    </style>
+</head>
+<body class="@(Model.IsA4 ? "a4" : "thermal")">
+    <div class="receipt">
+        <h1 class="shop-name">@Model.BusinessName</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Address))
+        {
+            <p class="shop-address">@Model.Address</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Phone))
+        {
+            <p class="shop-address">Contact: @Model.Phone</p>
+        }
+
+        <hr />
+
+        <p class="meta">Invoice: @sale.InvoiceNumber</p>
+        <p class="meta">@sale.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+        @if (sale.Status != SaleStatus.Completed)
+        {
+            <p class="meta"><strong>@sale.Status.ToString().ToUpperInvariant()</strong></p>
+        }
+
+        <hr />
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Price</th>
+                    <th class="num">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in sale.Items)
+                {
+                    <tr>
+                        <td>@item.ProductName</td>
+                        <td class="num">@item.Quantity</td>
+                        <td class="num">@item.UnitPrice.ToString("N2")</td>
+                        <td class="num">@item.LineTotal.ToString("N2")</td>
+                    </tr>
+
+                    @if (item.DiscountAmount > 0)
+                    {
+                        <tr>
+                            <td colspan="3"><small>Discount @item.DiscountPercent.ToString("0.##")%</small></td>
+                            <td class="num"><small>-@item.DiscountAmount.ToString("N2")</small></td>
+                        </tr>
+                    }
+                }
+                @if (sale.HasDiscount)
+                {
+                    <tr>
+                        <td colspan="3">Subtotal</td>
+                        <td class="num">@sale.SubTotal.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3">Total discount</td>
+                        <td class="num">-@sale.DiscountAmount.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td colspan="3">Grand total</td>
+                    <td class="num">@sale.TotalAmount.ToString("N2")</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr />
+
+        <p class="meta">Payment: @paymentLabel</p>
+        <p class="footer">Thank you for your purchase.</p>
+
+        @if (barcode is not null)
+        {
+            <div class="barcode">
+                @barcode
+            </div>
+        }
+    </div>
+
+    <div class="actions">
+        <button type="button" onclick="window.print()">
+            Print @(Model.IsA4 ? "A4" : "receipt")
+        </button>
+
+        @if (Model.IsA4)
+        {
+            <a href="@Url.Action("Receipt", "Sales", new { id = sale.Id, format = ReceiptFormat.Thermal })">
+                80mm receipt
+            </a>
+        }
+        else
+        {
+            <a href="@Url.Action("Receipt", "Sales", new { id = sale.Id, format = ReceiptFormat.A4 })">
+                A4 invoice
+            </a>
+        }
+
+        <a href="@Url.Action("Details", "Sales", new { id = sale.Id })">Sale details</a>
+    </div>
+</body>
+</html>
